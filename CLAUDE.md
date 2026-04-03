@@ -4,7 +4,7 @@ Guidelines and context for working on the crab-game monorepo.
 
 ## Project Overview
 
-Nx 22 monorepo with two apps: a React + react-three-fiber top-down crab game (`game`) and an Electron desktop wrapper (`game-electron`). TypeScript throughout.
+Nx 22 monorepo with two apps: a React + react-three-fiber top-down crab game (`game`) and an Electron desktop wrapper (`game-electron`). TypeScript throughout. The game implements "Tide Survival" — an arcade/survival mode where the crab collects shells for points and must reach safe zones (rocks) before periodic tide waves sweep across the map. Waves get progressively faster and more frequent.
 
 ## Commands
 
@@ -23,14 +23,20 @@ npx nx serve game        # Same as npm run dev
 ```
 apps/
   game/                        # React + R3F + Vite app (port 4200)
-    src/App.tsx                # Root: wraps scene in KeyboardControls (WASD/arrows)
+    src/App.tsx                # Root: KeyboardControls (WASD/arrows/SPACE), HUD overlay
     src/components/
-      GameCanvas.tsx           # R3F <Canvas>, ambient light, scene composition
-      Camera.tsx               # OrthographicCamera, top-down, follows crab via useFrame
+      GameCanvas.tsx           # R3F <Canvas>, lighting, scene composition
+      Camera.tsx               # OrthographicCamera, top-down, follows crab, screen shake
       TileMap.tsx              # Single plane with repeating sand texture
-      CrabCharacter.tsx        # Crab sprite, reads position from zustand store
+      CrabCharacter.tsx        # Crab sprite, reads position/facing from zustand store
       CharacterController.tsx  # Headless: reads keyboard input, updates store each frame
-    src/store/gameStore.ts     # Zustand store: crabPosition {x, z}, moveCrab(dx, dz)
+      HUD.tsx                  # DOM overlay: title, playing (score/wave/countdown), game over
+      Rock.tsx                 # Safe zone boulder mesh (sphere + cylinder base)
+      Shell.tsx                # Collectible torus mesh with bob/spin animation
+      Tide.tsx                 # Advancing water plane + foam edge, driven by store state
+      WaveManager.tsx          # Headless: calls store.tick(delta) each frame
+    src/store/gameStore.ts     # Zustand store: game phase state machine, tide/flood logic,
+                               #   wave progression, shell collection, screen shake, high scores
     public/textures/           # sand.png, crab.png (placeholder PNGs)
   game-electron/               # Electron wrapper
     src/main.ts                # BrowserWindow, loads localhost:4200 in dev, static in prod
@@ -62,16 +68,30 @@ All `@nx/*` packages must be pinned to the same version (currently 22.6.4). Mism
 ## Key Patterns
 
 ### R3F performance pattern
-Use `useGameStore.getState()` inside `useFrame` callbacks instead of React hooks. This avoids re-rendering React components 60 times per second. Both `Camera.tsx` and `CrabCharacter.tsx` follow this pattern.
+Use `useGameStore.getState()` inside `useFrame` callbacks instead of React hooks. This avoids re-rendering React components 60 times per second. `Camera.tsx`, `CrabCharacter.tsx`, `Tide.tsx`, and `WaveManager.tsx` all follow this pattern.
 
 ### KeyboardControls placement
 `<KeyboardControls>` from drei is a DOM-level provider and must wrap `<Canvas>` (it lives in `App.tsx`). Inside the Canvas, components read input via `useKeyboardControls()`.
 
+### Game state machine
+The zustand store drives a phase-based state machine: `title` → `playing` → `tideActive` → `gameOver` (or back to `playing` on survive). All per-frame game logic (countdown, tide progression, flood detection, shell collection, screen shake decay) runs in the store's `tick(delta)` method, called by the headless `WaveManager` component.
+
 ### CharacterController
-Renders `null` (headless component). Uses delta-based movement with diagonal normalization for frame-rate independence. This is the only component that writes to the zustand store during gameplay.
+Renders `null` (headless component). Uses delta-based movement with diagonal normalization for frame-rate independence. Movement is gated on game phase (`playing` or `tideActive` only). Boundary clamping is handled in the store's `moveCrab` action.
 
 ### Tile map
-Uses a single large plane with `RepeatWrapping` texture — NOT individual tile meshes. Much better performance (1 draw call vs hundreds).
+Uses a single large plane (50x50) with `RepeatWrapping` texture — NOT individual tile meshes. Much better performance (1 draw call vs hundreds). The `MAP_SIZE` constant is exported from `gameStore.ts` and used for boundary clamping and tide calculations.
+
+### Tide system
+The tide sweeps from a random cardinal direction each wave. A flood line advances across the map over a duration that decreases with each wave (3s down to 1.5s). Each frame during `tideActive`, the store checks whether the flood line has passed the crab's position — if so and the crab is not within a rock's safe zone radius, it's game over. The `Tide` component renders a water plane and foam edge whose position/scale are updated imperatively via `useFrame`.
+
+### Wave progression
+| Parameter | Base (wave 1) | Scaling | Minimum |
+|-----------|--------------|---------|---------|
+| Countdown | 10s | -0.5s per wave | 4s |
+| Tide duration | 3s | -0.1s per wave | 1.5s |
+| Rock count | 2 | +1 every 5 waves | — |
+| Shell count | 5 | +2 per wave | — |
 
 ## Config Gotchas
 

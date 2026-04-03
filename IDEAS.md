@@ -1,8 +1,12 @@
 # Game Ideas
 
-## 1. Tide Survival (arcade/survival)
+## 1. Tide Survival (arcade/survival) — IMPLEMENTED
 
 A rising tide sweeps across the beach periodically. The crab must scurry to higher ground (rocks, driftwood) before the wave hits. Each wave is faster/larger. Collect shells for points between waves.
+
+**Status:** Core gameplay complete. Title screen, wave countdown, tide from random directions, shell collection (+10 pts), safe zone rocks, game over, wave progression with scaling difficulty, screen shake, sprite facing, localStorage high scores.
+
+**Future polish:** Sound effects (wave crash, shell pickup, game over), particle foam on tide edge, wave announcement text.
 
 ## 2. Hermit Crab Shell Swap (puzzle/collection)
 
@@ -26,74 +30,24 @@ Dig tunnels under the sand (underground layer) and defend your burrow from invad
 
 ---
 
-## Tide Survival — Implementation Plan
+## Tide Survival — Implementation Notes
 
-### Core Concept
+Implemented across all 6 planned phases. Key files:
 
-The crab roams a beach collecting shells for points. Periodically, a tide wave rolls in from one side. The crab must reach a safe zone (rock, elevated ground) before the water arrives or it's game over. Waves get progressively faster and more frequent.
+| File | Role |
+|------|------|
+| `store/gameStore.ts` | State machine, tide/flood logic, wave scaling, shell collection, high scores |
+| `components/WaveManager.tsx` | Headless — calls `tick(delta)` each frame |
+| `components/Tide.tsx` | Water plane + foam edge, position driven by store |
+| `components/Rock.tsx` | Safe zone boulder (sphere + cylinder base) |
+| `components/Shell.tsx` | Collectible torus with bob/spin animation |
+| `components/HUD.tsx` | DOM overlay — title, score/wave/countdown, game over |
+| `components/Camera.tsx` | Screen shake support |
+| `components/CharacterController.tsx` | Movement gated by game phase |
+| `components/CrabCharacter.tsx` | Sprite flips to face movement direction |
+| `App.tsx` | SPACE key to start/restart |
 
-### Phase 1: Game State & UI
-
-**Store changes** (`gameStore.ts`):
-- Add `gamePhase`: `"title" | "playing" | "gameOver"`
-- Add `score`, `wave` (current wave number), `highScore`
-- Add `timeUntilWave` (countdown timer)
-- Add actions: `startGame()`, `endGame()`, `addScore(n)`, `nextWave()`, `tick(delta)`
-
-**HUD component**:
-- Overlay div showing score, wave number, and wave countdown timer
-- Title screen with "Press SPACE to start"
-- Game over screen showing final score/wave and "Press SPACE to restart"
-
-### Phase 2: Safe Zones (Rocks)
-
-- Create a `Rock` component — simple box/cylinder meshes with a brown/gray material
-- Rocks are placed at semi-random positions on the map (fixed per wave or reshuffled each wave)
-- Add `safeZones: {x, z, radius}[]` to the store
-- Collision check: if crab is within a safe zone's radius when the tide hits, crab survives
-
-### Phase 3: Tide System
-
-- `Tide` component — a large blue semi-transparent plane that slides in from one edge (e.g., negative Z)
-- Tide advances over ~3 seconds, covering the full play area, then recedes
-- Direction can vary per wave (left, right, top, bottom) for variety
-- During the "advancing" phase, if the crab is NOT on a safe zone when water reaches its position → game over
-- Visual: water plane with slight opacity animation, maybe a foam edge
-
-### Phase 4: Collectibles (Shells)
-
-- `Shell` component — small sprite or mesh scattered on the sand
-- Walking over a shell collects it (+10 points) and removes it
-- New shells spawn between waves
-- Store tracks shell positions: `shells: {id, x, z}[]`
-
-### Phase 5: Wave Progression
-
-- Wave 1: 10s countdown, tide from south, 2 rocks, 5 shells
-- Each subsequent wave: reduce countdown by 0.5s (min 4s), add more shells, reposition rocks
-- Every 5 waves: add a rock, increase tide speed
-- Optional: wave announcement text ("Wave 3 incoming!")
-
-### Phase 6: Polish
-
+### Remaining polish ideas
 - Sound effects (wave crash, shell pickup, game over)
-- Screen shake when tide hits
 - Particle foam on tide edge
-- Crab animation (walking sprite flip based on direction)
-- High score persistence (localStorage)
-
-### File Structure (new/modified)
-
-```
-src/
-  store/gameStore.ts          # Modified — add game state, waves, shells, safe zones
-  components/
-    GameCanvas.tsx            # Modified — add new components to scene
-    CharacterController.tsx   # Modified — disable movement when not "playing"
-    HUD.tsx                   # New — score, wave, countdown, title/game-over screens
-    Rock.tsx                  # New — safe zone mesh
-    Tide.tsx                  # New — advancing water plane
-    Shell.tsx                 # New — collectible item
-    ShellManager.tsx          # New — spawns/manages shell entities
-    WaveManager.tsx           # New — headless component, drives tide timing & wave progression
-```
+- Wave announcement text ("Wave 3 incoming!")
