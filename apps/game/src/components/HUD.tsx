@@ -10,8 +10,8 @@ export function HUD() {
 
   return (
     <div style={containerStyle}>
-      {gamePhase === 'title' && (
-        <div style={centerStyle}>
+      {(gamePhase === 'title' || gamePhase === 'demo') && (
+        <div style={{ ...centerStyle, backgroundColor: 'rgba(0, 0, 0, 0.3)' }}>
           <h1 style={titleStyle}>TIDE SURVIVAL</h1>
           <p style={subtitleStyle}>Collect shells. Dodge the tide.</p>
           <p style={promptStyle}>Press SPACE to start</p>

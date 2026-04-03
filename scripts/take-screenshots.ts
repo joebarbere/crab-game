@@ -43,8 +43,8 @@ async function screenshotWeb(browser: Browser): Promise<void> {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(GAME_URL, { waitUntil: 'networkidle' });
 
-  // Give R3F/Three.js time to render the scene
-  await page.waitForTimeout(3000);
+  // Give R3F/Three.js time to render and the demo AI to play
+  await page.waitForTimeout(5000);
 
   await page.screenshot({
     path: path.join(SCREENSHOTS_DIR, 'game-web.png'),
@@ -85,9 +85,9 @@ async function screenshotElectron(): Promise<void> {
   const window = await electronApp.firstWindow();
   await window.setViewportSize({ width: 1280, height: 720 });
 
-  // Wait for the page to load and R3F to render
+  // Wait for the page to load, R3F to render, and the demo AI to play
   await window.waitForLoadState('networkidle');
-  await window.waitForTimeout(3000);
+  await window.waitForTimeout(5000);
 
   await window.screenshot({
     path: path.join(SCREENSHOTS_DIR, 'game-electron.png'),

@@ -4,7 +4,7 @@ import { create } from 'zustand';
 export const MAP_SIZE = 50;
 const HALF_MAP = MAP_SIZE / 2;
 const SHELL_COLLECT_RADIUS = 1.2;
-const SAFE_ZONE_RADIUS = 1.8;
+export const SAFE_ZONE_RADIUS = 1.8;
 
 // --- Types ---
 export interface Shell {
@@ -20,13 +20,14 @@ export interface SafeZone {
   radius: number;
 }
 
-export type GamePhase = 'title' | 'playing' | 'tideActive' | 'gameOver';
+export type GamePhase = 'title' | 'demo' | 'playing' | 'tideActive' | 'gameOver';
 export type TideDirection = 'north' | 'south' | 'east' | 'west';
 
 interface GameState {
   crabPosition: { x: number; z: number };
   crabFacing: 1 | -1;
   gamePhase: GamePhase;
+  demoSubPhase: 'playing' | 'tideActive';
   score: number;
   highScore: number;
   wave: number;
@@ -39,6 +40,7 @@ interface GameState {
 
   moveCrab: (dx: number, dz: number) => void;
   startGame: () => void;
+  startDemo: () => void;
   tick: (delta: number) => void;
 }
 
@@ -143,10 +145,26 @@ function loadHighScore(): number {
   }
 }
 
+function initWaveState() {
+  return {
+    crabPosition: { x: 0, z: 0 },
+    crabFacing: 1 as const,
+    score: 0,
+    wave: 1,
+    timeUntilWave: getCountdown(1),
+    tideProgress: 0,
+    tideDirection: randomDirection(),
+    safeZones: generateRocks(1),
+    shells: generateShells(1),
+    screenShake: 0,
+  };
+}
+
 export const useGameStore = create<GameState>((set, get) => ({
   crabPosition: { x: 0, z: 0 },
   crabFacing: 1,
   gamePhase: 'title',
+  demoSubPhase: 'playing',
   score: 0,
   highScore: loadHighScore(),
   wave: 1,
@@ -175,34 +193,35 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   startGame: () => {
-    const rocks = generateRocks(1);
-    const shells = generateShells(1);
     set({
       gamePhase: 'playing',
-      crabPosition: { x: 0, z: 0 },
-      crabFacing: 1,
-      score: 0,
-      wave: 1,
-      timeUntilWave: getCountdown(1),
-      tideProgress: 0,
-      tideDirection: randomDirection(),
-      safeZones: rocks,
-      shells: shells,
-      screenShake: 0,
+      ...initWaveState(),
       highScore: loadHighScore(),
+    });
+  },
+
+  startDemo: () => {
+    set({
+      gamePhase: 'demo',
+      demoSubPhase: 'playing',
+      ...initWaveState(),
     });
   },
 
   tick: (delta) => {
     const state = get();
     const updates: Partial<GameState> = {};
+    const isDemo = state.gamePhase === 'demo';
 
     // Decay screen shake
     if (state.screenShake > 0) {
       updates.screenShake = Math.max(0, state.screenShake - delta * 3);
     }
 
-    if (state.gamePhase === 'playing') {
+    // Determine effective sub-phase
+    const effectivePhase = isDemo ? state.demoSubPhase : state.gamePhase;
+
+    if (effectivePhase === 'playing') {
       // Shell collection
       const pos = state.crabPosition;
       let scoreGained = 0;
@@ -227,7 +246,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       // Wave countdown
       const newTime = state.timeUntilWave - delta;
       if (newTime <= 0) {
-        updates.gamePhase = 'tideActive';
+        if (isDemo) {
+          updates.demoSubPhase = 'tideActive';
+        } else {
+          updates.gamePhase = 'tideActive';
+        }
         updates.timeUntilWave = 0;
         updates.tideProgress = 0;
         updates.screenShake = 0.4;
@@ -236,7 +259,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
 
       set(updates as Partial<GameState>);
-    } else if (state.gamePhase === 'tideActive') {
+    } else if (effectivePhase === 'tideActive') {
       const tideDuration = getTideDuration(state.wave);
       const newProgress = Math.min(
         1,
@@ -247,18 +270,23 @@ export const useGameStore = create<GameState>((set, get) => ({
       const pos = state.crabPosition;
       if (isCrabFlooded(pos, newProgress, state.tideDirection)) {
         if (!isCrabOnSafeZone(pos, state.safeZones)) {
-          const newHighScore = Math.max(state.score, state.highScore);
-          try {
-            localStorage.setItem('crabGameHighScore', String(newHighScore));
-          } catch {
-            /* noop */
+          if (isDemo) {
+            // Auto-restart the demo
+            get().startDemo();
+          } else {
+            const newHighScore = Math.max(state.score, state.highScore);
+            try {
+              localStorage.setItem('crabGameHighScore', String(newHighScore));
+            } catch {
+              /* noop */
+            }
+            set({
+              ...updates,
+              gamePhase: 'gameOver',
+              highScore: newHighScore,
+              tideProgress: newProgress,
+            });
           }
-          set({
-            ...updates,
-            gamePhase: 'gameOver',
-            highScore: newHighScore,
-            tideProgress: newProgress,
-          });
           return;
         }
       }
@@ -270,7 +298,9 @@ export const useGameStore = create<GameState>((set, get) => ({
         const shells = generateShells(nextWave);
         set({
           ...updates,
-          gamePhase: 'playing',
+          ...(isDemo
+            ? { demoSubPhase: 'playing' as const }
+            : { gamePhase: 'playing' as const }),
           wave: nextWave,
           tideProgress: 0,
           timeUntilWave: getCountdown(nextWave),

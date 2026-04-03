@@ -10,10 +10,12 @@ export function Tide() {
   const foamRef = useRef<Mesh>(null!);
 
   useFrame(() => {
-    const { gamePhase, tideProgress, tideDirection } = useGameStore.getState();
+    const { gamePhase, demoSubPhase, tideProgress, tideDirection } =
+      useGameStore.getState();
 
     const showTide =
-      (gamePhase === 'tideActive' || gamePhase === 'gameOver') &&
+      ((gamePhase === 'tideActive' || gamePhase === 'gameOver') ||
+        (gamePhase === 'demo' && demoSubPhase === 'tideActive')) &&
       tideProgress > 0.001;
 
     waterRef.current.visible = showTide;

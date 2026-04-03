@@ -13,11 +13,15 @@ const keyMap = [
 
 export function App() {
   useEffect(() => {
+    useGameStore.getState().startDemo();
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         e.preventDefault();
         const phase = useGameStore.getState().gamePhase;
-        if (phase === 'title' || phase === 'gameOver') {
+        if (phase === 'title' || phase === 'demo' || phase === 'gameOver') {
           useGameStore.getState().startGame();
         }
       }

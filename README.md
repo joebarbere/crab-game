@@ -1,20 +1,30 @@
-# Crab Game
+# Crab Game: Tide Survival
 
-A top-down 2D game built with React and Three.js, featuring a crab character navigating a sandy environment. The game runs in the browser and as a desktop application via Electron.
+A top-down arcade/survival game built with React and Three.js. Control a crab on the beach — collect shells for points, then scramble to a safe rock before the tide sweeps in. Each wave gets faster and more intense. How long can you survive?
+
+The title screen features an AI-controlled crab that plays the game automatically until you press SPACE.
 
 ## Screenshots
 
 ### Web App (`game`)
 
-The game running in a browser at `http://localhost:4200`. The scene features a sand tile map rendered with a repeating texture and a crab sprite controlled via keyboard input.
+The animated title screen with the AI demo playing in the background. Shells, rocks, and tide are all active while the title overlay is displayed.
 
 ![Game running in web browser](docs/screenshots/game-web.png)
 
 ### Electron App (`game-electron`)
 
-The same game running inside an Electron desktop window (1280x720). Electron loads the Vite dev server during development and serves built static files in production.
+The same game running inside an Electron desktop window (1280x720).
 
 ![Game running in Electron](docs/screenshots/game-electron.png)
+
+## Video Clips
+
+Recorded clips of the animated title screen are available in `docs/clips/` (webm format). Generate them with:
+
+```bash
+npm run clips
+```
 
 ## Tech Stack
 
@@ -34,15 +44,21 @@ The same game running inside an Electron desktop window (1280x720). Electron loa
 apps/
   game/                   # React + R3F web game
     src/
-      App.tsx             # Root component with KeyboardControls
+      App.tsx             # Root: KeyboardControls, SPACE handler, auto-starts demo
       components/
-        GameCanvas.tsx    # R3F Canvas setup
-        Camera.tsx        # Orthographic top-down camera (follows crab)
+        GameCanvas.tsx    # R3F Canvas, lighting, scene composition
+        Camera.tsx        # Orthographic top-down camera, screen shake
         TileMap.tsx       # Sand-textured ground plane
-        CrabCharacter.tsx # Crab sprite rendering
-        CharacterController.tsx  # WASD/arrow key input handler
+        CrabCharacter.tsx # Crab sprite rendering + mounts controllers
+        CharacterController.tsx   # Player keyboard input (WASD/arrows)
+        DemoCrabController.tsx    # AI bot that plays during title screen demo
+        HUD.tsx           # Title, playing, tide warning, and game over overlays
+        Rock.tsx          # Safe zone boulder meshes
+        Shell.tsx         # Collectible torus meshes with bob/spin animation
+        Tide.tsx          # Advancing water plane + foam edge
+        WaveManager.tsx   # Headless: drives game tick each frame
       store/
-        gameStore.ts      # Zustand store for game state
+        gameStore.ts      # Zustand store: game state machine, tide/flood logic
     public/textures/      # Sand and crab sprite textures
   game-electron/          # Electron desktop wrapper
     src/
@@ -50,6 +66,7 @@ apps/
       preload.ts          # Context bridge preload script
 scripts/
   take-screenshots.ts     # Playwright screenshot generator
+  take-clips.ts           # Playwright video clip recorder
 ```
 
 ## Getting Started
@@ -66,7 +83,7 @@ npm install
 npx nx serve game
 ```
 
-Opens at [http://localhost:4200](http://localhost:4200). Use **WASD** or **arrow keys** to move the crab.
+Opens at [http://localhost:4200](http://localhost:4200). The title screen shows an AI demo — press **SPACE** to start playing.
 
 ### Run the Electron app
 
@@ -89,13 +106,22 @@ npx nx build game-electron   # Compile Electron app to dist/apps/game-electron/
 npm run screenshots
 ```
 
-Uses Playwright to capture screenshots of both the web and Electron apps, saving them to `docs/screenshots/`.
+Uses Playwright to capture screenshots of the animated title screen in both web and Electron apps, saving them to `docs/screenshots/`.
+
+### Record video clips
+
+```bash
+npm run clips
+```
+
+Uses Playwright to record webm video clips of the title screen demo, saving them to `docs/clips/`. Override the default 10-second duration with `CLIP_DURATION=20000 npm run clips`.
 
 ## Controls
 
 | Key | Action |
 |-----|--------|
-| W / Arrow Up | Move forward |
-| S / Arrow Down | Move backward |
+| W / Arrow Up | Move up |
+| S / Arrow Down | Move down |
 | A / Arrow Left | Move left |
 | D / Arrow Right | Move right |
+| Space | Start game / Restart after game over |

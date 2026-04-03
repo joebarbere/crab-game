@@ -3,6 +3,7 @@ import { useTexture } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useGameStore } from '../store/gameStore';
 import { CharacterController } from './CharacterController';
+import { DemoCrabController } from './DemoCrabController';
 import type { Sprite as SpriteType } from 'three';
 
 export function CrabCharacter() {
@@ -18,6 +19,7 @@ export function CrabCharacter() {
   return (
     <>
       <CharacterController />
+      <DemoCrabController />
       <sprite ref={spriteRef} scale={[1, 1, 1]}>
         <spriteMaterial map={texture} />
       </sprite>

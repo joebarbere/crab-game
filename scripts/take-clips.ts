@@ -40,15 +40,12 @@ function startDevServer(): ChildProcess {
   return proc;
 }
 
-/** Press SPACE to start the game, then record for the given duration */
-async function startGameAndRecord(page: Page): Promise<void> {
-  // Wait for R3F/Three.js to render the title screen
+/** Wait for the demo to start playing, then record for the given duration */
+async function waitAndRecord(page: Page): Promise<void> {
+  // Wait for R3F/Three.js to render and the demo AI to begin playing
   await page.waitForTimeout(3000);
 
-  // Press SPACE to start the game
-  await page.keyboard.press('Space');
-
-  // Let the game run for the clip duration
+  // Record the demo (AI plays automatically on the title screen)
   await page.waitForTimeout(CLIP_DURATION_MS);
 }
 
@@ -66,7 +63,7 @@ async function recordWeb(browser: Browser): Promise<void> {
   const page = await context.newPage();
   await page.goto(GAME_URL, { waitUntil: 'networkidle' });
 
-  await startGameAndRecord(page);
+  await waitAndRecord(page);
 
   // Close page to finalize the video file
   const videoPath = await page.video()?.path();
@@ -129,7 +126,7 @@ async function recordElectron(): Promise<void> {
   await window.setViewportSize({ width: 1280, height: 720 });
   await window.waitForLoadState('networkidle');
 
-  await startGameAndRecord(window);
+  await waitAndRecord(window);
 
   const videoPath = await window.video()?.path();
   await electronApp.close();
