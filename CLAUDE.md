@@ -14,6 +14,7 @@ npm run dev:electron     # Start Electron app (launches dev server + Electron)
 npm run build            # Build web game to dist/apps/game/
 npm run build:electron   # Build Electron app to dist/apps/game-electron/
 npm run screenshots      # Generate screenshots with Playwright (needs xvfb on headless)
+npm run clips            # Record webm video clips with Playwright (needs xvfb on headless)
 npx nx build game        # Same as npm run build
 npx nx serve game        # Same as npm run dev
 ```
@@ -108,7 +109,7 @@ The tide sweeps from a random cardinal direction each wave. A flood line advance
 `main.ts` checks `process.argv.includes('--dev') || !app.isPackaged` to decide whether to load `http://localhost:4200` or built static files. DevTools open automatically in dev mode.
 
 ### Electron window size
-Set to 1280x720 in `main.ts`. The screenshot script uses the same viewport dimensions. If you change one, update the other.
+Set to 1280x720 in `main.ts`. The screenshot and video clip scripts use the same viewport dimensions. If you change one, update the others.
 
 ## Screenshot Script
 
@@ -120,6 +121,16 @@ Set to 1280x720 in `main.ts`. The screenshot script uses the same viewport dimen
 - Electron screenshot: compiles electron TS, launches via `playwright._electron`
 - Both wait 3 seconds after page load for R3F/Three.js to render
 - Outputs to `docs/screenshots/`
+
+## Video Clip Script
+
+`scripts/take-clips.ts` uses Playwright's `recordVideo` API to capture webm video clips of both apps.
+
+- Same compile/serve pattern as the screenshot script
+- Presses SPACE to start the game, then records for a configurable duration
+- Default clip length: 10 seconds. Override with `CLIP_DURATION` env var (milliseconds), e.g. `CLIP_DURATION=20000 npm run clips`
+- Outputs to `docs/clips/` (`game-web.webm`, `game-electron.webm`)
+- Resolution: 1280x720 (matches screenshot script and Electron window)
 
 **Running on headless systems:** needs `xvfb-run -a` and `DISPLAY=:99`. The Chromium executable path defaults to `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` — override with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` env var. Electron launches with `--no-sandbox --disable-gpu` for headless compatibility.
 
