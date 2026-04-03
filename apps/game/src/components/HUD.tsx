@@ -9,6 +9,8 @@ export function HUD() {
   const highScore = useGameStore((s) => s.highScore);
   const wave = useGameStore((s) => s.wave);
   const timeUntilWave = useGameStore((s) => s.timeUntilWave);
+  const isNight = useGameStore((s) => s.isNight);
+  const toggleDayNight = useGameStore((s) => s.toggleDayNight);
   const [announcement, setAnnouncement] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,6 +33,12 @@ export function HUD() {
           100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
         }
       `}</style>
+      <button
+        onClick={toggleDayNight}
+        style={dayNightButtonStyle}
+      >
+        {isNight ? 'NIGHT' : 'DAY'}
+      </button>
       {announcement && (
         <div style={announcementStyle} key={wave}>
           {announcement}
@@ -41,7 +49,8 @@ export function HUD() {
           <h1 style={titleStyle}>TIDE SURVIVAL</h1>
           <p style={subtitleStyle}>Collect shells. Dodge the tide.</p>
           <p style={promptStyle}>Press SPACE to start</p>
-          <p style={hintStyle}>WASD / Arrow Keys to move</p>
+          <p style={hintStyle}>WASD / Arrow Keys / Gamepad to move</p>
+          <p style={hintStyle}>N to toggle day/night</p>
           {highScore > 0 && (
             <p style={highScoreStyle}>Best: {highScore}</p>
           )}
@@ -179,6 +188,23 @@ const announcementStyle: React.CSSProperties = {
   pointerEvents: 'none',
   animation: 'waveAnnounce 2.5s ease-out forwards',
   whiteSpace: 'nowrap',
+};
+
+const dayNightButtonStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: 16,
+  right: 16,
+  padding: '8px 14px',
+  fontFamily: ARCADE_FONT,
+  fontSize: 10,
+  letterSpacing: 2,
+  color: '#FFF8E7',
+  background: 'rgba(0, 0, 0, 0.4)',
+  border: '1px solid rgba(255, 255, 255, 0.3)',
+  borderRadius: 4,
+  cursor: 'pointer',
+  pointerEvents: 'auto',
+  textShadow: '1px 1px 3px rgba(0,0,0,0.8)',
 };
 
 const timerContainerStyle: React.CSSProperties = {

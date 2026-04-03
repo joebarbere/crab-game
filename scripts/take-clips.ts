@@ -43,7 +43,7 @@ function startDevServer(): ChildProcess {
 /** Wait for the demo to start playing, then record for the given duration */
 async function waitAndRecord(page: Page): Promise<void> {
   // Wait for R3F/Three.js to render and the demo AI to begin playing
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(5000);
 
   // Record the demo (AI plays automatically on the title screen)
   await page.waitForTimeout(CLIP_DURATION_MS);
@@ -112,7 +112,8 @@ async function recordElectron(): Promise<void> {
   const electronApp = await electron.launch({
     args: [
       '--no-sandbox',
-      '--disable-gpu',
+      '--use-gl=angle',
+      '--use-angle=swiftshader',
       path.join(ROOT_DIR, 'dist', 'apps', 'game-electron', 'main.js'),
     ],
     env: { ...process.env, DISPLAY: process.env.DISPLAY || ':99' },
@@ -158,7 +159,7 @@ async function main(): Promise<void> {
     // Record the web app
     const browser = await chromium.launch({
       executablePath: CHROMIUM_PATH,
-      args: ['--no-sandbox', '--disable-gpu'],
+      args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader'],
     });
 
     try {

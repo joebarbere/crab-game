@@ -76,7 +76,8 @@ async function screenshotElectron(): Promise<void> {
   const electronApp = await electron.launch({
     args: [
       '--no-sandbox',
-      '--disable-gpu',
+      '--use-gl=angle',
+      '--use-angle=swiftshader',
       path.join(ROOT_DIR, 'dist', 'apps', 'game-electron', 'main.js'),
     ],
     env: { ...process.env, DISPLAY: process.env.DISPLAY || ':99' },
@@ -111,7 +112,7 @@ async function main(): Promise<void> {
     // Screenshot the web app
     const browser = await chromium.launch({
       executablePath: CHROMIUM_PATH,
-      args: ['--no-sandbox', '--disable-gpu'],
+      args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader'],
     });
 
     try {

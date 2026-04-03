@@ -16,8 +16,16 @@ interface Particle {
   vz: number;
 }
 
+const DAY_FOAM_COLOR = new THREE.Color('#F0F8FF');
+const NIGHT_FOAM_COLORS = [
+  new THREE.Color('#00FFAA'),
+  new THREE.Color('#00CCFF'),
+  new THREE.Color('#8844FF'),
+];
+
 export function TideFoamParticles() {
   const pointsRef = useRef<THREE.Points>(null!);
+  const matRef = useRef<THREE.PointsMaterial>(null!);
 
   const particles = useRef<Particle[]>(
     Array.from({ length: PARTICLE_COUNT }, () => ({
@@ -46,9 +54,23 @@ export function TideFoamParticles() {
     return geo;
   }, []);
 
-  useFrame((_, delta) => {
-    const { gamePhase, demoSubPhase, tideProgress, tideDirection } =
+  useFrame((state, delta) => {
+    const { gamePhase, demoSubPhase, tideProgress, tideDirection, isNight } =
       useGameStore.getState();
+
+    // Update material for day/night
+    if (matRef.current) {
+      if (isNight) {
+        const colorIdx = Math.floor(state.clock.elapsedTime * 0.5) % NIGHT_FOAM_COLORS.length;
+        matRef.current.color.lerp(NIGHT_FOAM_COLORS[colorIdx], Math.min(delta * 4, 1));
+        matRef.current.opacity += (1.0 - matRef.current.opacity) * Math.min(delta * 3, 1);
+        matRef.current.blending = THREE.AdditiveBlending;
+      } else {
+        matRef.current.color.lerp(DAY_FOAM_COLOR, Math.min(delta * 4, 1));
+        matRef.current.opacity += (0.8 - matRef.current.opacity) * Math.min(delta * 3, 1);
+        matRef.current.blending = THREE.NormalBlending;
+      }
+    }
 
     const showTide =
       ((gamePhase === 'tideActive' || gamePhase === 'gameOver') ||
@@ -113,7 +135,7 @@ export function TideFoamParticles() {
       positions[i * 3 + 2] += p.vz * delta;
 
       const life = 1 - p.age / LIFETIME;
-      sizes[i] = life * 0.6;
+      sizes[i] = life * (isNight ? 0.9 : 0.6);
     }
 
     geometry.attributes.position.needsUpdate = true;
@@ -124,6 +146,7 @@ export function TideFoamParticles() {
     <points ref={pointsRef} visible={false}>
       <primitive object={geometry} attach="geometry" />
       <pointsMaterial
+        ref={matRef}
         color="#F0F8FF"
         transparent
         opacity={0.8}
