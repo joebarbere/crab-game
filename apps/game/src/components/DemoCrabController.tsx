@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGameStore, SAFE_ZONE_RADIUS } from '../store/gameStore';
+import { playerEntities, shellEntities, safeZoneEntities } from '../ecs/world';
 
 const SPEED = 5;
 const RETARGET_INTERVAL = 0.35;
@@ -15,13 +16,15 @@ export function DemoCrabController() {
     const state = useGameStore.getState();
     if (state.gamePhase !== 'demo') return;
 
-    const pos = state.crabPosition;
+    const player = playerEntities.entities[0];
+    if (!player) return;
+    const pos = player.position;
 
     // Re-evaluate target periodically
     retargetTimer.current -= delta;
     if (retargetTimer.current <= 0) {
       retargetTimer.current = RETARGET_INTERVAL + Math.random() * 0.15;
-      targetRef.current = pickTarget(state, pos);
+      targetRef.current = pickTarget(state.demoSubPhase, state.timeUntilWave, pos);
     }
 
     const target = targetRef.current;
@@ -55,28 +58,29 @@ export function DemoCrabController() {
 }
 
 function pickTarget(
-  state: ReturnType<typeof useGameStore.getState>,
+  demoSubPhase: string,
+  timeUntilWave: number,
   pos: { x: number; z: number }
 ): { x: number; z: number } | null {
-  const { demoSubPhase, timeUntilWave, shells, safeZones } = state;
+  const zones = safeZoneEntities.entities;
 
   // During tide or when tide is imminent: head for nearest rock
   if (demoSubPhase === 'tideActive' || timeUntilWave <= 3) {
-    return nearestZone(pos, safeZones);
+    return nearestZone(pos, zones);
   }
 
   // Otherwise: go for shells
-  const uncollected = shells.filter((s) => !s.collected);
+  const uncollected = shellEntities.entities.filter((e) => !e.shell.collected);
   if (uncollected.length === 0) {
     // No shells left, wander toward a random rock
-    return safeZones.length > 0
-      ? safeZones[Math.floor(Math.random() * safeZones.length)]
+    return zones.length > 0
+      ? zones[Math.floor(Math.random() * zones.length)].position
       : null;
   }
 
   // Sort by distance
   const sorted = uncollected
-    .map((s) => ({ ...s, d: Math.hypot(s.x - pos.x, s.z - pos.z) }))
+    .map((e) => ({ ...e.position, d: Math.hypot(e.position.x - pos.x, e.position.z - pos.z) }))
     .sort((a, b) => a.d - b.d);
 
   // Occasionally pick 2nd-nearest for variety
@@ -88,15 +92,16 @@ function pickTarget(
 
 function nearestZone(
   pos: { x: number; z: number },
-  zones: { x: number; z: number }[]
+  zones: { position: { x: number; z: number } }[]
 ): { x: number; z: number } | null {
   if (zones.length === 0) return null;
-  let best = zones[0];
+  let best = zones[0].position;
   let bestDist = Math.hypot(best.x - pos.x, best.z - pos.z);
   for (let i = 1; i < zones.length; i++) {
-    const d = Math.hypot(zones[i].x - pos.x, zones[i].z - pos.z);
+    const p = zones[i].position;
+    const d = Math.hypot(p.x - pos.x, p.z - pos.z);
     if (d < bestDist) {
-      best = zones[i];
+      best = p;
       bestDist = d;
     }
   }

@@ -26,21 +26,25 @@ apps/
   game/                        # React + R3F + Vite app (port 4200)
     src/App.tsx                # Root: KeyboardControls (WASD/arrows/SPACE), HUD overlay,
                                #   auto-starts demo on mount
+    src/ecs/
+      world.ts                 # Miniplex ECS world, entity type, cached archetypes
+      react.ts                 # createReactAPI bindings (ECS.Entity, ECS.Entities, etc.)
+      helpers.ts               # Entity lifecycle: spawn/clear shells, rocks, player
     src/components/
-      GameCanvas.tsx           # R3F <Canvas>, lighting, scene composition
+      GameCanvas.tsx           # R3F <Canvas>, lighting, scene composition, ECS-driven
       Camera.tsx               # OrthographicCamera, top-down, follows crab, screen shake
       TileMap.tsx              # Single plane with repeating sand texture
-      CrabCharacter.tsx        # Crab sprite, mounts both player + demo controllers
-      CharacterController.tsx  # Headless: reads keyboard input, updates store each frame
-      DemoCrabController.tsx   # Headless: AI bot that plays during demo phase
+      CrabCharacter.tsx        # Crab sprite, reads position from ECS player entity
+      CharacterController.tsx  # Headless: reads keyboard input, calls store.moveCrab
+      DemoCrabController.tsx   # Headless: AI bot, queries ECS for shells/rocks
       HUD.tsx                  # DOM overlay: demo/title, playing (score/wave/countdown), game over
-      Rock.tsx                 # Safe zone boulder mesh (sphere + cylinder base)
-      Shell.tsx                # Collectible torus mesh with bob/spin animation
+      Rock.tsx                 # Safe zone boulder mesh, renders from ECS entity
+      Shell.tsx                # Collectible torus mesh with bob/spin, renders from ECS entity
       Tide.tsx                 # Advancing water plane + foam edge, driven by store state
       WaveManager.tsx          # Headless: calls store.tick(delta) each frame
     src/store/gameStore.ts     # Zustand store: game phase state machine, demo mode,
-                               #   tide/flood logic, wave progression, shell collection,
-                               #   screen shake, high scores
+                               #   tide/flood logic, wave progression, screen shake,
+                               #   high scores. Entity data delegated to ECS world.
     public/textures/           # sand.png, crab.png (placeholder PNGs)
   game-electron/               # Electron wrapper
     src/main.ts                # BrowserWindow, loads localhost:4200 in dev, static in prod
@@ -67,13 +71,26 @@ All `@nx/*` packages must be pinned to the same version (currently 22.6.4). Mism
 | @react-three/drei | ^9.122.0 | Pairs with r3f v8 |
 | three | ^0.160.0 | Stable, works with r3f 8 + drei 9 |
 | zustand | ^5.0.12 | Framework-agnostic, works with React 18 |
+| miniplex | ^2.0.0 | ECS library for entity management |
+| miniplex-react | ^2.0.0 | React bindings for miniplex (useEntities, createReactAPI) |
 | nx / @nx/* | 22.6.4 | All Nx packages must match |
 | electron | ^35.0.0 | devDependency only |
 
 ## Key Patterns
 
+### ECS with miniplex
+Game entities (player crab, shells, rocks) live in a miniplex `World` (`src/ecs/world.ts`), not in the Zustand store. The Zustand store holds game-level state only (phase, wave, score, countdown, tide progress, screen shake). This separation keeps entity data cache-friendly and queryable via archetypes.
+
+**Entity type** (`src/ecs/world.ts`): all components are optional properties on a single `Entity` interface — `position`, `facing`, `isPlayer`, `shell`, `safeZone`, `bobOffset`. Archetypes (`playerEntities`, `shellEntities`, `safeZoneEntities`) are cached queries created at module scope.
+
+**Entity lifecycle** (`src/ecs/helpers.ts`): `spawnWaveEntities(wave)` clears old shells/rocks and spawns new ones plus resets the player. Called by `gameStore.initWaveState()` on game start and wave transitions.
+
+**Rendering**: `GameCanvas.tsx` uses `useEntities()` from `miniplex-react` to subscribe to archetype changes and re-render `<Rock>` / `<ShellItem>` lists. Individual components receive their entity as a prop. `CrabCharacter.tsx` and `Camera.tsx` read the player entity directly from the `playerEntities` archetype inside `useFrame` (no React subscription needed for per-frame reads).
+
+**Per-frame mutations**: The store's `tick()` method and `moveCrab()` action mutate ECS entity data directly (e.g., `player.position.x += dx`). Miniplex entities are plain objects, so direct mutation is idiomatic and avoids allocation.
+
 ### R3F performance pattern
-Use `useGameStore.getState()` inside `useFrame` callbacks instead of React hooks. This avoids re-rendering React components 60 times per second. `Camera.tsx`, `CrabCharacter.tsx`, `Tide.tsx`, and `WaveManager.tsx` all follow this pattern.
+Use `useGameStore.getState()` inside `useFrame` callbacks instead of React hooks. This avoids re-rendering React components 60 times per second. `Camera.tsx`, `CrabCharacter.tsx`, `Tide.tsx`, and `WaveManager.tsx` all follow this pattern. For ECS data, read archetypes directly (e.g., `playerEntities.entities[0]`) inside `useFrame` — no React hook needed.
 
 ### KeyboardControls placement
 `<KeyboardControls>` from drei is a DOM-level provider and must wrap `<Canvas>` (it lives in `App.tsx`). Inside the Canvas, components read input via `useKeyboardControls()`.

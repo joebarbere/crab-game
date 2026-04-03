@@ -1,4 +1,5 @@
 import { Canvas } from '@react-three/fiber';
+import { useEntities } from 'miniplex-react';
 import { Camera } from './Camera';
 import { TileMap } from './TileMap';
 import { CrabCharacter } from './CrabCharacter';
@@ -6,27 +7,27 @@ import { WaveManager } from './WaveManager';
 import { Tide } from './Tide';
 import { Rock } from './Rock';
 import { ShellItem } from './Shell';
-import { useGameStore } from '../store/gameStore';
+import { safeZoneEntities, shellEntities } from '../ecs/world';
 
 function Rocks() {
-  const safeZones = useGameStore((s) => s.safeZones);
+  const rocks = useEntities(safeZoneEntities);
   return (
     <>
-      {safeZones.map((zone) => (
-        <Rock key={`${zone.x.toFixed(2)}-${zone.z.toFixed(2)}`} zone={zone} />
+      {rocks.entities.map((entity, i) => (
+        <Rock key={`rock-${i}`} entity={entity} />
       ))}
     </>
   );
 }
 
 function Shells() {
-  const shells = useGameStore((s) => s.shells);
+  const shells = useEntities(shellEntities);
   return (
     <>
-      {shells
-        .filter((s) => !s.collected)
-        .map((s) => (
-          <ShellItem key={s.id} shell={s} />
+      {shells.entities
+        .filter((e) => !e.shell.collected)
+        .map((entity) => (
+          <ShellItem key={entity.shell.id} entity={entity} />
         ))}
     </>
   );
