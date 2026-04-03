@@ -13,7 +13,7 @@ export function CrabCharacter() {
   useFrame(() => {
     const player = playerEntities.entities[0];
     if (!player) return;
-    spriteRef.current.position.set(player.position.x, 0.5, player.position.z);
+    spriteRef.current.position.set(player.position.x, 2, player.position.z);
     spriteRef.current.scale.set(player.facing ?? 1, 1, 1);
   });
 
@@ -21,8 +21,8 @@ export function CrabCharacter() {
     <>
       <CharacterController />
       <DemoCrabController />
-      <sprite ref={spriteRef} scale={[1, 1, 1]}>
-        <spriteMaterial map={texture} />
+      <sprite ref={spriteRef} scale={[1, 1, 1]} renderOrder={1}>
+        <spriteMaterial map={texture} depthTest={false} />
       </sprite>
     </>
   );
