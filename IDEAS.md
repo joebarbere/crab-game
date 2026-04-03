@@ -6,7 +6,7 @@ A rising tide sweeps across the beach periodically. The crab must scurry to high
 
 **Status:** Core gameplay complete. Title screen, wave countdown, tide from random directions, shell collection (+10 pts), safe zone rocks, game over, wave progression with scaling difficulty, screen shake, sprite facing, localStorage high scores.
 
-**Future polish:** Sound effects (wave crash, shell pickup, game over), particle foam on tide edge, wave announcement text.
+**Future polish (IMPLEMENTED):** Sound effects (wave crash, shell pickup, game over), particle foam on tide edge, wave announcement text.
 
 ## 2. Hermit Crab Shell Swap (puzzle/collection)
 
@@ -47,7 +47,7 @@ Implemented across all 6 planned phases. Key files:
 | `components/CrabCharacter.tsx` | Sprite flips to face movement direction |
 | `App.tsx` | SPACE key to start/restart |
 
-### Remaining polish ideas
-- Sound effects (wave crash, shell pickup, game over)
-- Particle foam on tide edge
-- Wave announcement text ("Wave 3 incoming!")
+### Remaining polish ideas — ALL IMPLEMENTED
+- ~~Sound effects (wave crash, shell pickup, game over)~~ — procedural Web Audio API sounds
+- ~~Particle foam on tide edge~~ — THREE.Points particle system in TideFoamParticles.tsx
+- ~~Wave announcement text ("Wave 3 incoming!")~~ — animated HUD overlay between waves

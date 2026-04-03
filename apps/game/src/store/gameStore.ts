@@ -6,6 +6,12 @@ import {
   safeZoneEntities,
 } from '../ecs/world';
 import { spawnWaveEntities, ensurePlayer } from '../ecs/helpers';
+import {
+  playShellPickup,
+  playTideStart,
+  playGameOver,
+  playWaveSurvived,
+} from '../audio/soundManager';
 
 // --- Constants ---
 export const MAP_SIZE = 50;
@@ -187,6 +193,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
       if (scoreGained > 0) {
         updates.score = state.score + scoreGained;
+        if (!isDemo) playShellPickup();
       }
 
       // Wave countdown
@@ -200,6 +207,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         updates.timeUntilWave = 0;
         updates.tideProgress = 0;
         updates.screenShake = 0.4;
+        if (!isDemo) playTideStart();
       } else {
         updates.timeUntilWave = newTime;
       }
@@ -224,6 +232,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             } catch {
               /* noop */
             }
+            playGameOver();
             set({
               ...updates,
               gamePhase: 'gameOver',
@@ -239,6 +248,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         // Wave survived — next wave
         const nextWave = state.wave + 1;
         spawnWaveEntities(nextWave);
+        if (!isDemo) playWaveSurvived();
         set({
           ...updates,
           ...(isDemo

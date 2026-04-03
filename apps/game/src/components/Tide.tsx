@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGameStore, MAP_SIZE, getFloodLine } from '../store/gameStore';
+import { TideFoamParticles } from './TideFoamParticles';
 import type { Mesh } from 'three';
 
 const HALF_MAP = MAP_SIZE / 2;
@@ -78,6 +79,7 @@ export function Tide() {
           roughness={0.1}
         />
       </mesh>
+      <TideFoamParticles />
     </>
   );
 }
