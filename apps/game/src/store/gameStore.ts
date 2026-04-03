@@ -12,12 +12,12 @@ import {
   playGameOver,
   playWaveSurvived,
 } from '../audio/soundManager';
+import { MAP_SIZE, SHELL_COLLECT_RADIUS, SAFE_ZONE_RADIUS } from '../constants';
+
+export { MAP_SIZE, SHELL_COLLECT_RADIUS, SAFE_ZONE_RADIUS };
 
 // --- Constants ---
-export const MAP_SIZE = 50;
 const HALF_MAP = MAP_SIZE / 2;
-export const SHELL_COLLECT_RADIUS = 1.2;
-export const SAFE_ZONE_RADIUS = 1.8;
 
 // --- Types ---
 export type GamePhase =

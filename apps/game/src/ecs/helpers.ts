@@ -5,7 +5,7 @@ import {
   safeZoneEntities,
   Entity,
 } from './world';
-import { SAFE_ZONE_RADIUS, MAP_SIZE } from '../store/gameStore';
+import { SAFE_ZONE_RADIUS, MAP_SIZE } from '../constants';
 
 const HALF_MAP = MAP_SIZE / 2;
 

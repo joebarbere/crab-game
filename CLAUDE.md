@@ -45,6 +45,9 @@ apps/
       Tide.tsx                 # Advancing water plane + foam edge, driven by store state
       TideFoamParticles.tsx    # Foam particle effect on tide leading edge (THREE.Points)
       WaveManager.tsx          # Headless: calls store.tick(delta) each frame
+    src/constants.ts           # Shared constants (MAP_SIZE, radii) — avoids circular deps
+    src/utils/
+      toonGradient.ts          # Cel-shading gradient DataTexture (RedFormat for WebGL2)
     src/store/gameStore.ts     # Zustand store: game phase state machine, demo mode,
                                #   tide/flood logic, wave progression, screen shake,
                                #   high scores. Entity data delegated to ECS world.
@@ -107,8 +110,11 @@ Renders `null` (headless component). Uses delta-based movement with diagonal nor
 ### DemoCrabController
 Renders `null` (headless component). Active only during `demo` phase. AI strategy: moves toward the nearest uncollected shell during play, switches to the nearest rock when the wave countdown drops below 3s or during tide. Re-evaluates targets every ~0.35s with slight directional noise for natural-looking movement. Mounted alongside `CharacterController` in `CrabCharacter.tsx` — both self-gate on phase so they never conflict.
 
+### Shared constants
+`MAP_SIZE`, `SHELL_COLLECT_RADIUS`, and `SAFE_ZONE_RADIUS` live in `src/constants.ts` and are re-exported from `gameStore.ts` for convenience. This breaks a circular dependency between `gameStore.ts` and `ecs/helpers.ts` — both import constants from `constants.ts` instead of from each other.
+
 ### Tile map
-Uses a single large plane (50x50) with `RepeatWrapping` texture — NOT individual tile meshes. Much better performance (1 draw call vs hundreds). The `MAP_SIZE` constant is exported from `gameStore.ts` and used for boundary clamping and tide calculations.
+Uses a single large plane (50x50) with `RepeatWrapping` texture — NOT individual tile meshes. Much better performance (1 draw call vs hundreds). The `MAP_SIZE` constant is defined in `src/constants.ts` and used for boundary clamping and tide calculations.
 
 ### Sound effects
 `src/audio/soundManager.ts` is a standalone module (not a React component) that generates procedural sounds via the Web Audio API. It exports four functions (`playShellPickup`, `playTideStart`, `playGameOver`, `playWaveSurvived`) called directly from the store's `tick()` method. The `AudioContext` is lazy-initialized on first use. Sounds are skipped during demo mode.
@@ -134,6 +140,9 @@ The tide sweeps from a random cardinal direction each wave. A flood line advance
 
 ### Vite fs.allow
 `apps/game/vite.config.ts` has `server.fs.allow: ['../..']` to allow Vite to serve files from the repo root. Without this, Vite blocks access to `index.html` when the dev server is started from the repo root (e.g., via `nx serve`).
+
+### Electron Content Security Policy
+`main.ts` sets a CSP via `session.defaultSession.webRequest.onHeadersReceived`. In dev mode, the policy allows `'unsafe-inline'` and `'unsafe-eval'` for Vite HMR, plus `ws://localhost:*` for WebSocket connections. In production, the policy is stricter (no `unsafe-eval`). Both modes allow Google Fonts (`fonts.googleapis.com` / `fonts.gstatic.com`).
 
 ### Electron dev vs prod
 `main.ts` checks `process.argv.includes('--dev') || !app.isPackaged` to decide whether to load `http://localhost:4200` or built static files. DevTools open automatically in dev mode.

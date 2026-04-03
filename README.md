@@ -67,6 +67,9 @@ apps/
         Tide.tsx          # Advancing water plane + foam edge
         TideFoamParticles.tsx  # Particle foam effect on tide leading edge
         WaveManager.tsx   # Headless: drives game tick each frame
+      constants.ts        # Shared constants (MAP_SIZE, radii)
+      utils/
+        toonGradient.ts   # Cel-shading gradient texture for toon materials
       store/
         gameStore.ts      # Zustand store: game phase, score, tide. Entity data in ECS.
     public/textures/      # Sand and crab sprite textures
