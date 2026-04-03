@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 
+const ARCADE_FONT = "'Press Start 2P', cursive";
+
 export function HUD() {
   const gamePhase = useGameStore((s) => s.gamePhase);
   const score = useGameStore((s) => s.score);
@@ -35,7 +37,7 @@ export function HUD() {
         </div>
       )}
       {(gamePhase === 'title' || gamePhase === 'demo') && (
-        <div style={{ ...centerStyle, backgroundColor: 'rgba(0, 0, 0, 0.3)' }}>
+        <div style={{ ...centerStyle, backgroundColor: 'rgba(0, 30, 60, 0.4)' }}>
           <h1 style={titleStyle}>TIDE SURVIVAL</h1>
           <p style={subtitleStyle}>Collect shells. Dodge the tide.</p>
           <p style={promptStyle}>Press SPACE to start</p>
@@ -55,8 +57,8 @@ export function HUD() {
           <div style={timerContainerStyle}>
             <span
               style={{
-                fontSize: timeUntilWave <= 3 ? 40 : 28,
-                color: timeUntilWave <= 3 ? '#FF4444' : '#FFFFFF',
+                fontSize: timeUntilWave <= 3 ? 28 : 18,
+                color: timeUntilWave <= 3 ? '#FF4444' : '#FFF8E7',
                 fontWeight: 'bold',
                 transition: 'font-size 0.2s',
               }}
@@ -69,7 +71,7 @@ export function HUD() {
 
       {gamePhase === 'tideActive' && (
         <div style={topBarStyle}>
-          <span style={{ color: '#66BBFF' }}>TIDE INCOMING</span>
+          <span style={{ color: '#00BCD4' }}>TIDE INCOMING</span>
           <span>Score: {score}</span>
         </div>
       )}
@@ -77,14 +79,14 @@ export function HUD() {
       {gamePhase === 'gameOver' && (
         <div style={centerStyle}>
           <h1 style={{ ...titleStyle, color: '#FF4444' }}>GAME OVER</h1>
-          <p style={{ fontSize: 32, color: '#FFFFFF', margin: '8px 0' }}>
+          <p style={{ fontSize: 20, color: '#FFF8E7', margin: '12px 0', fontFamily: ARCADE_FONT, letterSpacing: 2 }}>
             Score: {score}
           </p>
-          <p style={{ fontSize: 22, color: '#BBBBBB', margin: '4px 0' }}>
+          <p style={{ fontSize: 14, color: '#BBBBBB', margin: '6px 0', fontFamily: ARCADE_FONT, letterSpacing: 2 }}>
             Wave {wave}
           </p>
           {score >= highScore && score > 0 && (
-            <p style={{ fontSize: 22, color: '#FFD700', margin: '8px 0' }}>
+            <p style={{ fontSize: 14, color: '#FFD700', margin: '10px 0', fontFamily: ARCADE_FONT, letterSpacing: 2 }}>
               New High Score!
             </p>
           )}
@@ -113,48 +115,53 @@ const centerStyle: React.CSSProperties = {
   justifyContent: 'center',
   height: '100%',
   textAlign: 'center',
-  fontFamily: "'Courier New', Courier, monospace",
+  fontFamily: ARCADE_FONT,
   textShadow: '2px 2px 6px rgba(0,0,0,0.9)',
 };
 
 const titleStyle: React.CSSProperties = {
-  fontSize: 52,
+  fontSize: 36,
   margin: 0,
   color: '#FF6B35',
   letterSpacing: 4,
 };
 
 const subtitleStyle: React.CSSProperties = {
-  fontSize: 20,
-  color: '#DDDDDD',
-  margin: '8px 0',
+  fontSize: 12,
+  color: '#FFF8E7',
+  margin: '12px 0',
+  letterSpacing: 2,
 };
 
 const promptStyle: React.CSSProperties = {
-  fontSize: 22,
-  color: '#CCCCCC',
+  fontSize: 14,
+  color: '#FFF8E7',
   marginTop: 16,
+  letterSpacing: 2,
 };
 
 const hintStyle: React.CSSProperties = {
-  fontSize: 14,
-  color: '#888888',
-  marginTop: 4,
+  fontSize: 10,
+  color: '#AAA',
+  marginTop: 6,
+  letterSpacing: 1,
 };
 
 const highScoreStyle: React.CSSProperties = {
-  fontSize: 18,
+  fontSize: 12,
   color: '#FFD700',
   marginTop: 12,
+  letterSpacing: 2,
 };
 
 const topBarStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   padding: '16px 24px',
-  fontSize: 22,
-  fontFamily: "'Courier New', Courier, monospace",
-  color: '#FFFFFF',
+  fontSize: 14,
+  fontFamily: ARCADE_FONT,
+  color: '#FFF8E7',
+  letterSpacing: 2,
   textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
 };
 
@@ -163,10 +170,11 @@ const announcementStyle: React.CSSProperties = {
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
-  fontSize: 48,
+  fontSize: 28,
   fontWeight: 'bold',
-  fontFamily: "'Courier New', Courier, monospace",
-  color: '#FFFFFF',
+  fontFamily: ARCADE_FONT,
+  color: '#FFF8E7',
+  letterSpacing: 2,
   textShadow: '3px 3px 8px rgba(0,0,0,0.9)',
   pointerEvents: 'none',
   animation: 'waveAnnounce 2.5s ease-out forwards',
@@ -178,6 +186,7 @@ const timerContainerStyle: React.CSSProperties = {
   top: 56,
   width: '100%',
   textAlign: 'center',
-  fontFamily: "'Courier New', Courier, monospace",
+  fontFamily: ARCADE_FONT,
+  letterSpacing: 2,
   textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
 };

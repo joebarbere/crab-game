@@ -37,9 +37,11 @@ export function GameCanvas() {
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
       <Canvas>
+        <color attach="background" args={['#87CEEB']} />
         <Camera />
-        <ambientLight intensity={0.8} />
-        <directionalLight position={[10, 20, 10]} intensity={0.6} />
+        <ambientLight intensity={0.4} />
+        <directionalLight position={[10, 20, 5]} intensity={1.2} />
+        <hemisphereLight args={['#87CEEB', '#F4D35E', 0.3]} />
         <TileMap />
         <CrabCharacter />
         <WaveManager />

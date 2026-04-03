@@ -1,5 +1,6 @@
 import { useTexture } from '@react-three/drei';
 import { RepeatWrapping } from 'three';
+import { toonGradientMap } from '../utils/toonGradient';
 
 const MAP_SIZE = 50;
 const TILE_REPEAT = 25;
@@ -12,7 +13,11 @@ export function TileMap() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
       <planeGeometry args={[MAP_SIZE, MAP_SIZE]} />
-      <meshStandardMaterial map={texture} />
+      <meshToonMaterial
+        map={texture}
+        color="#F4D35E"
+        gradientMap={toonGradientMap}
+      />
     </mesh>
   );
 }

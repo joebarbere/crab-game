@@ -4,9 +4,9 @@ import { useGameStore, MAP_SIZE, getFloodLine } from '../store/gameStore';
 import * as THREE from 'three';
 
 const HALF_MAP = MAP_SIZE / 2;
-const PARTICLE_COUNT = 120;
-const LIFETIME = 0.8;
-const SPAWN_PER_FRAME = 3;
+const PARTICLE_COUNT = 200;
+const LIFETIME = 1.0;
+const SPAWN_PER_FRAME = 4;
 
 interface Particle {
   alive: boolean;
@@ -35,7 +35,6 @@ export function TideFoamParticles() {
     const geo = new THREE.BufferGeometry();
     const positions = new Float32Array(PARTICLE_COUNT * 3);
     const sizes = new Float32Array(PARTICLE_COUNT);
-    // Initialize off-screen
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       positions[i * 3] = 0;
       positions[i * 3 + 1] = -100;
@@ -74,22 +73,20 @@ export function TideFoamParticles() {
         p.alive = true;
         p.age = 0;
 
-        // Random position along the foam line
         const spread = (Math.random() - 0.5) * MAP_SIZE;
         if (isHorizontal) {
-          positions[idx * 3] = floodLine + (Math.random() - 0.5) * 0.5;
-          positions[idx * 3 + 1] = 0.09;
+          positions[idx * 3] = floodLine + (Math.random() - 0.5) * 0.8;
+          positions[idx * 3 + 1] = 0.12;
           positions[idx * 3 + 2] = spread;
-          // Drift perpendicular (along Z) + slight away from tide
           p.vx = (tideDirection === 'west' ? 1 : -1) * (0.5 + Math.random());
-          p.vy = 0.3;
+          p.vy = 0.4 + Math.random() * 0.2;
           p.vz = (Math.random() - 0.5) * 2;
         } else {
           positions[idx * 3] = spread;
-          positions[idx * 3 + 1] = 0.09;
-          positions[idx * 3 + 2] = floodLine + (Math.random() - 0.5) * 0.5;
+          positions[idx * 3 + 1] = 0.12;
+          positions[idx * 3 + 2] = floodLine + (Math.random() - 0.5) * 0.8;
           p.vx = (Math.random() - 0.5) * 2;
-          p.vy = 0.3;
+          p.vy = 0.4 + Math.random() * 0.2;
           p.vz = (tideDirection === 'north' ? 1 : -1) * (0.5 + Math.random());
         }
 
@@ -106,7 +103,7 @@ export function TideFoamParticles() {
       p.age += delta;
       if (p.age >= LIFETIME) {
         p.alive = false;
-        positions[i * 3 + 1] = -100; // hide
+        positions[i * 3 + 1] = -100;
         sizes[i] = 0;
         continue;
       }
@@ -115,9 +112,8 @@ export function TideFoamParticles() {
       positions[i * 3 + 1] += p.vy * delta;
       positions[i * 3 + 2] += p.vz * delta;
 
-      // Fade: size shrinks as particle ages
       const life = 1 - p.age / LIFETIME;
-      sizes[i] = life * 0.4;
+      sizes[i] = life * 0.6;
     }
 
     geometry.attributes.position.needsUpdate = true;
@@ -128,10 +124,10 @@ export function TideFoamParticles() {
     <points ref={pointsRef} visible={false}>
       <primitive object={geometry} attach="geometry" />
       <pointsMaterial
-        color="#FFFFFF"
+        color="#F0F8FF"
         transparent
-        opacity={0.7}
-        size={0.4}
+        opacity={0.8}
+        size={0.5}
         sizeAttenuation
         depthWrite={false}
       />
