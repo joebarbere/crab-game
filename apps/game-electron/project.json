@@ -1,0 +1,34 @@
+{
+  "name": "game-electron",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/game-electron/src",
+  "implicitDependencies": ["game"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "npx tsc -p apps/game-electron/tsconfig.json --outDir dist/apps/game-electron"
+        ]
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "commands": [
+          {
+            "command": "nx serve game",
+            "forwardAllArgs": false
+          },
+          {
+            "command": "npx wait-on http://localhost:4200 && npx electron dist/apps/game-electron/main.js",
+            "forwardAllArgs": false
+          }
+        ],
+        "parallel": true
+      }
+    }
+  }
+}

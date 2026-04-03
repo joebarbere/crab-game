@@ -1,0 +1,6 @@
+{
+  "name": "@crab-game/game-electron",
+  "version": "0.0.0",
+  "private": true,
+  "main": "../../dist/apps/game-electron/main.js"
+}

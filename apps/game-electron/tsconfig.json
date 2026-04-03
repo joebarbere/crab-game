@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2022",
+    "outDir": "../../dist/apps/game-electron",
+    "moduleResolution": "node",
+    "types": ["node"]
+  },
+  "include": ["src/**/*"]
+}
