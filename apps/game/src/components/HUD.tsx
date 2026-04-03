@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 
 export function HUD() {
@@ -7,9 +7,33 @@ export function HUD() {
   const highScore = useGameStore((s) => s.highScore);
   const wave = useGameStore((s) => s.wave);
   const timeUntilWave = useGameStore((s) => s.timeUntilWave);
+  const [announcement, setAnnouncement] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (gamePhase !== 'playing' || wave <= 1) {
+      return;
+    }
+    setAnnouncement(`Wave ${wave} incoming!`);
+    const timer = setTimeout(() => setAnnouncement(null), 2500);
+    return () => clearTimeout(timer);
+  }, [wave, gamePhase]);
 
   return (
     <div style={containerStyle}>
+      <style>{`
+        @keyframes waveAnnounce {
+          0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+          15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+          25% { transform: translate(-50%, -50%) scale(1); }
+          75% { opacity: 1; }
+          100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+        }
+      `}</style>
+      {announcement && (
+        <div style={announcementStyle} key={wave}>
+          {announcement}
+        </div>
+      )}
       {(gamePhase === 'title' || gamePhase === 'demo') && (
         <div style={{ ...centerStyle, backgroundColor: 'rgba(0, 0, 0, 0.3)' }}>
           <h1 style={titleStyle}>TIDE SURVIVAL</h1>
@@ -132,6 +156,21 @@ const topBarStyle: React.CSSProperties = {
   fontFamily: "'Courier New', Courier, monospace",
   color: '#FFFFFF',
   textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+};
+
+const announcementStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  fontSize: 48,
+  fontWeight: 'bold',
+  fontFamily: "'Courier New', Courier, monospace",
+  color: '#FFFFFF',
+  textShadow: '3px 3px 8px rgba(0,0,0,0.9)',
+  pointerEvents: 'none',
+  animation: 'waveAnnounce 2.5s ease-out forwards',
+  whiteSpace: 'nowrap',
 };
 
 const timerContainerStyle: React.CSSProperties = {

@@ -2,6 +2,8 @@
 
 A top-down arcade/survival game built with React and Three.js. Control a crab on the beach — collect shells for points, then scramble to a safe rock before the tide sweeps in. Each wave gets faster and more intense. How long can you survive?
 
+Features procedural sound effects (Web Audio API), foam particle effects on the advancing tide edge, and wave announcement banners between waves.
+
 The title screen features an AI-controlled crab that plays the game automatically until you press SPACE.
 
 ## Screenshots
@@ -46,6 +48,8 @@ apps/
   game/                   # React + R3F web game
     src/
       App.tsx             # Root: KeyboardControls, SPACE handler, auto-starts demo
+      audio/
+        soundManager.ts   # Procedural sound effects (Web Audio API oscillators)
       ecs/
         world.ts          # Miniplex ECS world, entity type, cached archetypes
         react.ts          # React bindings for ECS (createReactAPI)
@@ -61,6 +65,7 @@ apps/
         Rock.tsx          # Safe zone boulder meshes (renders ECS entity)
         Shell.tsx         # Collectible torus meshes with bob/spin (renders ECS entity)
         Tide.tsx          # Advancing water plane + foam edge
+        TideFoamParticles.tsx  # Particle foam effect on tide leading edge
         WaveManager.tsx   # Headless: drives game tick each frame
       store/
         gameStore.ts      # Zustand store: game phase, score, tide. Entity data in ECS.

@@ -26,6 +26,8 @@ apps/
   game/                        # React + R3F + Vite app (port 4200)
     src/App.tsx                # Root: KeyboardControls (WASD/arrows/SPACE), HUD overlay,
                                #   auto-starts demo on mount
+    src/audio/
+      soundManager.ts          # Procedural sound effects via Web Audio API oscillators
     src/ecs/
       world.ts                 # Miniplex ECS world, entity type, cached archetypes
       react.ts                 # createReactAPI bindings (ECS.Entity, ECS.Entities, etc.)
@@ -41,6 +43,7 @@ apps/
       Rock.tsx                 # Safe zone boulder mesh, renders from ECS entity
       Shell.tsx                # Collectible torus mesh with bob/spin, renders from ECS entity
       Tide.tsx                 # Advancing water plane + foam edge, driven by store state
+      TideFoamParticles.tsx    # Foam particle effect on tide leading edge (THREE.Points)
       WaveManager.tsx          # Headless: calls store.tick(delta) each frame
     src/store/gameStore.ts     # Zustand store: game phase state machine, demo mode,
                                #   tide/flood logic, wave progression, screen shake,
@@ -107,8 +110,11 @@ Renders `null` (headless component). Active only during `demo` phase. AI strateg
 ### Tile map
 Uses a single large plane (50x50) with `RepeatWrapping` texture — NOT individual tile meshes. Much better performance (1 draw call vs hundreds). The `MAP_SIZE` constant is exported from `gameStore.ts` and used for boundary clamping and tide calculations.
 
+### Sound effects
+`src/audio/soundManager.ts` is a standalone module (not a React component) that generates procedural sounds via the Web Audio API. It exports four functions (`playShellPickup`, `playTideStart`, `playGameOver`, `playWaveSurvived`) called directly from the store's `tick()` method. The `AudioContext` is lazy-initialized on first use. Sounds are skipped during demo mode.
+
 ### Tide system
-The tide sweeps from a random cardinal direction each wave. A flood line advances across the map over a duration that decreases with each wave (3s down to 1.5s). Each frame during `tideActive`, the store checks whether the flood line has passed the crab's position — if so and the crab is not within a rock's safe zone radius, it's game over. The `Tide` component renders a water plane and foam edge whose position/scale are updated imperatively via `useFrame`.
+The tide sweeps from a random cardinal direction each wave. A flood line advances across the map over a duration that decreases with each wave (3s down to 1.5s). Each frame during `tideActive`, the store checks whether the flood line has passed the crab's position — if so and the crab is not within a rock's safe zone radius, it's game over. The `Tide` component renders a water plane and foam edge whose position/scale are updated imperatively via `useFrame`. `TideFoamParticles` renders a `THREE.Points` particle system along the foam edge — particles spawn along the flood line, drift away, and fade over ~0.8s using a ring buffer of 120 particles.
 
 ### Wave progression
 | Parameter | Base (wave 1) | Scaling | Minimum |
