@@ -8,9 +8,13 @@ export function Camera() {
   const cameraRef = useRef<OrthographicCameraType>(null!);
 
   useFrame(() => {
-    const { x, z } = useGameStore.getState().crabPosition;
-    cameraRef.current.position.x = x;
-    cameraRef.current.position.z = z;
+    const { crabPosition, screenShake } = useGameStore.getState();
+    const shakeX =
+      screenShake > 0 ? (Math.random() - 0.5) * screenShake * 2 : 0;
+    const shakeZ =
+      screenShake > 0 ? (Math.random() - 0.5) * screenShake * 2 : 0;
+    cameraRef.current.position.x = crabPosition.x + shakeX;
+    cameraRef.current.position.z = crabPosition.z + shakeZ;
   });
 
   return (

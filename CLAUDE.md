@@ -4,7 +4,7 @@ Guidelines and context for working on the crab-game monorepo.
 
 ## Project Overview
 
-Nx 22 monorepo with two apps: a React + react-three-fiber top-down crab game (`game`) and an Electron desktop wrapper (`game-electron`). TypeScript throughout.
+Nx 22 monorepo with two apps: a React + react-three-fiber top-down crab game (`game`) and an Electron desktop wrapper (`game-electron`). TypeScript throughout. The game implements "Tide Survival" — an arcade/survival mode where the crab collects shells for points and must reach safe zones (rocks) before periodic tide waves sweep across the map. Waves get progressively faster and more frequent.
 
 ## Commands
 
@@ -14,6 +14,7 @@ npm run dev:electron     # Start Electron app (launches dev server + Electron)
 npm run build            # Build web game to dist/apps/game/
 npm run build:electron   # Build Electron app to dist/apps/game-electron/
 npm run screenshots      # Generate screenshots with Playwright (needs xvfb on headless)
+npm run clips            # Record webm video clips with Playwright (needs xvfb on headless)
 npx nx build game        # Same as npm run build
 npx nx serve game        # Same as npm run dev
 ```
@@ -23,20 +24,30 @@ npx nx serve game        # Same as npm run dev
 ```
 apps/
   game/                        # React + R3F + Vite app (port 4200)
-    src/App.tsx                # Root: wraps scene in KeyboardControls (WASD/arrows)
+    src/App.tsx                # Root: KeyboardControls (WASD/arrows/SPACE), HUD overlay,
+                               #   auto-starts demo on mount
     src/components/
-      GameCanvas.tsx           # R3F <Canvas>, ambient light, scene composition
-      Camera.tsx               # OrthographicCamera, top-down, follows crab via useFrame
+      GameCanvas.tsx           # R3F <Canvas>, lighting, scene composition
+      Camera.tsx               # OrthographicCamera, top-down, follows crab, screen shake
       TileMap.tsx              # Single plane with repeating sand texture
-      CrabCharacter.tsx        # Crab sprite, reads position from zustand store
+      CrabCharacter.tsx        # Crab sprite, mounts both player + demo controllers
       CharacterController.tsx  # Headless: reads keyboard input, updates store each frame
-    src/store/gameStore.ts     # Zustand store: crabPosition {x, z}, moveCrab(dx, dz)
+      DemoCrabController.tsx   # Headless: AI bot that plays during demo phase
+      HUD.tsx                  # DOM overlay: demo/title, playing (score/wave/countdown), game over
+      Rock.tsx                 # Safe zone boulder mesh (sphere + cylinder base)
+      Shell.tsx                # Collectible torus mesh with bob/spin animation
+      Tide.tsx                 # Advancing water plane + foam edge, driven by store state
+      WaveManager.tsx          # Headless: calls store.tick(delta) each frame
+    src/store/gameStore.ts     # Zustand store: game phase state machine, demo mode,
+                               #   tide/flood logic, wave progression, shell collection,
+                               #   screen shake, high scores
     public/textures/           # sand.png, crab.png (placeholder PNGs)
   game-electron/               # Electron wrapper
     src/main.ts                # BrowserWindow, loads localhost:4200 in dev, static in prod
     src/preload.ts             # Minimal contextBridge
 scripts/
   take-screenshots.ts          # Playwright: starts dev server, screenshots web + electron
+  take-clips.ts                # Playwright: records webm video clips of both apps
 ```
 
 ### App dependency graph
@@ -62,16 +73,33 @@ All `@nx/*` packages must be pinned to the same version (currently 22.6.4). Mism
 ## Key Patterns
 
 ### R3F performance pattern
-Use `useGameStore.getState()` inside `useFrame` callbacks instead of React hooks. This avoids re-rendering React components 60 times per second. Both `Camera.tsx` and `CrabCharacter.tsx` follow this pattern.
+Use `useGameStore.getState()` inside `useFrame` callbacks instead of React hooks. This avoids re-rendering React components 60 times per second. `Camera.tsx`, `CrabCharacter.tsx`, `Tide.tsx`, and `WaveManager.tsx` all follow this pattern.
 
 ### KeyboardControls placement
 `<KeyboardControls>` from drei is a DOM-level provider and must wrap `<Canvas>` (it lives in `App.tsx`). Inside the Canvas, components read input via `useKeyboardControls()`.
 
+### Game state machine
+The zustand store drives a phase-based state machine: `demo` (auto-start on mount) → SPACE → `playing` ↔ `tideActive` → `gameOver` → SPACE → `playing`. The `demo` phase uses a `demoSubPhase` (`playing` | `tideActive`) to run the same game logic as real play, with the AI bot controlling the crab. Demo deaths auto-restart without affecting high scores. All per-frame game logic (countdown, tide progression, flood detection, shell collection, screen shake decay) runs in the store's `tick(delta)` method, called by the headless `WaveManager` component.
+
 ### CharacterController
-Renders `null` (headless component). Uses delta-based movement with diagonal normalization for frame-rate independence. This is the only component that writes to the zustand store during gameplay.
+Renders `null` (headless component). Uses delta-based movement with diagonal normalization for frame-rate independence. Movement is gated on game phase (`playing` or `tideActive` only). Boundary clamping is handled in the store's `moveCrab` action.
+
+### DemoCrabController
+Renders `null` (headless component). Active only during `demo` phase. AI strategy: moves toward the nearest uncollected shell during play, switches to the nearest rock when the wave countdown drops below 3s or during tide. Re-evaluates targets every ~0.35s with slight directional noise for natural-looking movement. Mounted alongside `CharacterController` in `CrabCharacter.tsx` — both self-gate on phase so they never conflict.
 
 ### Tile map
-Uses a single large plane with `RepeatWrapping` texture — NOT individual tile meshes. Much better performance (1 draw call vs hundreds).
+Uses a single large plane (50x50) with `RepeatWrapping` texture — NOT individual tile meshes. Much better performance (1 draw call vs hundreds). The `MAP_SIZE` constant is exported from `gameStore.ts` and used for boundary clamping and tide calculations.
+
+### Tide system
+The tide sweeps from a random cardinal direction each wave. A flood line advances across the map over a duration that decreases with each wave (3s down to 1.5s). Each frame during `tideActive`, the store checks whether the flood line has passed the crab's position — if so and the crab is not within a rock's safe zone radius, it's game over. The `Tide` component renders a water plane and foam edge whose position/scale are updated imperatively via `useFrame`.
+
+### Wave progression
+| Parameter | Base (wave 1) | Scaling | Minimum |
+|-----------|--------------|---------|---------|
+| Countdown | 10s | -0.5s per wave | 4s |
+| Tide duration | 3s | -0.1s per wave | 1.5s |
+| Rock count | 2 | +1 every 5 waves | — |
+| Shell count | 5 | +2 per wave | — |
 
 ## Config Gotchas
 
@@ -88,7 +116,7 @@ Uses a single large plane with `RepeatWrapping` texture — NOT individual tile 
 `main.ts` checks `process.argv.includes('--dev') || !app.isPackaged` to decide whether to load `http://localhost:4200` or built static files. DevTools open automatically in dev mode.
 
 ### Electron window size
-Set to 1280x720 in `main.ts`. The screenshot script uses the same viewport dimensions. If you change one, update the other.
+Set to 1280x720 in `main.ts`. The screenshot and video clip scripts use the same viewport dimensions. If you change one, update the others.
 
 ## Screenshot Script
 
@@ -98,8 +126,18 @@ Set to 1280x720 in `main.ts`. The screenshot script uses the same viewport dimen
 - Starts the Vite dev server, waits for it with `waitForServer()`
 - Web screenshot: launches Chromium, navigates to localhost:4200
 - Electron screenshot: compiles electron TS, launches via `playwright._electron`
-- Both wait 3 seconds after page load for R3F/Three.js to render
+- Both wait 5 seconds after page load for R3F/Three.js to render and the demo AI to play
 - Outputs to `docs/screenshots/`
+
+## Video Clip Script
+
+`scripts/take-clips.ts` uses Playwright's `recordVideo` API to capture webm video clips of both apps.
+
+- Same compile/serve pattern as the screenshot script
+- Records the demo title screen (AI plays automatically, no SPACE press needed)
+- Default clip length: 10 seconds. Override with `CLIP_DURATION` env var (milliseconds), e.g. `CLIP_DURATION=20000 npm run clips`
+- Outputs to `docs/clips/` (`game-web.webm`, `game-electron.webm`)
+- Resolution: 1280x720 (matches screenshot script and Electron window)
 
 **Running on headless systems:** needs `xvfb-run -a` and `DISPLAY=:99`. The Chromium executable path defaults to `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` — override with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` env var. Electron launches with `--no-sandbox --disable-gpu` for headless compatibility.
 

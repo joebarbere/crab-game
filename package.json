@@ -10,7 +10,8 @@
     "dev:electron": "nx serve game-electron",
     "build": "nx build game",
     "build:electron": "nx build game-electron",
-    "screenshots": "npx tsc -p scripts/tsconfig.json && node dist/scripts/take-screenshots.js"
+    "screenshots": "npx tsc -p scripts/tsconfig.json && node dist/scripts/take-screenshots.js",
+    "clips": "npx tsc -p scripts/tsconfig.json && node dist/scripts/take-clips.js"
   },
   "devDependencies": {
     "@nx/js": "22.6.4",
