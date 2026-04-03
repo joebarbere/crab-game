@@ -1,31 +1,28 @@
 import { create } from 'zustand';
+import {
+  world,
+  playerEntities,
+  shellEntities,
+  safeZoneEntities,
+} from '../ecs/world';
+import { spawnWaveEntities, ensurePlayer } from '../ecs/helpers';
 
 // --- Constants ---
 export const MAP_SIZE = 50;
 const HALF_MAP = MAP_SIZE / 2;
-const SHELL_COLLECT_RADIUS = 1.2;
+export const SHELL_COLLECT_RADIUS = 1.2;
 export const SAFE_ZONE_RADIUS = 1.8;
 
 // --- Types ---
-export interface Shell {
-  id: string;
-  x: number;
-  z: number;
-  collected: boolean;
-}
-
-export interface SafeZone {
-  x: number;
-  z: number;
-  radius: number;
-}
-
-export type GamePhase = 'title' | 'demo' | 'playing' | 'tideActive' | 'gameOver';
+export type GamePhase =
+  | 'title'
+  | 'demo'
+  | 'playing'
+  | 'tideActive'
+  | 'gameOver';
 export type TideDirection = 'north' | 'south' | 'east' | 'west';
 
 interface GameState {
-  crabPosition: { x: number; z: number };
-  crabFacing: 1 | -1;
   gamePhase: GamePhase;
   demoSubPhase: 'playing' | 'tideActive';
   score: number;
@@ -34,8 +31,6 @@ interface GameState {
   timeUntilWave: number;
   tideProgress: number;
   tideDirection: TideDirection;
-  safeZones: SafeZone[];
-  shells: Shell[];
   screenShake: number;
 
   moveCrab: (dx: number, dz: number) => void;
@@ -58,47 +53,11 @@ function randomDirection(): TideDirection {
   return dirs[Math.floor(Math.random() * dirs.length)];
 }
 
-function generateRocks(wave: number): SafeZone[] {
-  const count = 2 + Math.floor((wave - 1) / 5);
-  const rocks: SafeZone[] = [];
-  const range = HALF_MAP - 4;
-
-  for (let i = 0; i < count; i++) {
-    let x = 0,
-      z = 0;
-    let attempts = 0;
-    do {
-      x = (Math.random() * 2 - 1) * range;
-      z = (Math.random() * 2 - 1) * range;
-      attempts++;
-    } while (
-      attempts < 50 &&
-      ((Math.abs(x) < 3 && Math.abs(z) < 3) ||
-        rocks.some((r) => Math.hypot(r.x - x, r.z - z) < 5))
-    );
-    rocks.push({ x, z, radius: SAFE_ZONE_RADIUS });
-  }
-  return rocks;
-}
-
-function generateShells(wave: number): Shell[] {
-  const count = 5 + (wave - 1) * 2;
-  const shells: Shell[] = [];
-  const range = HALF_MAP - 2;
-
-  for (let i = 0; i < count; i++) {
-    shells.push({
-      id: `${wave}-${i}`,
-      x: (Math.random() * 2 - 1) * range,
-      z: (Math.random() * 2 - 1) * range,
-      collected: false,
-    });
-  }
-  return shells;
-}
-
 // --- Flood detection ---
-function getFloodLine(progress: number, direction: TideDirection): number {
+export function getFloodLine(
+  progress: number,
+  direction: TideDirection
+): number {
   switch (direction) {
     case 'south':
       return HALF_MAP - progress * MAP_SIZE;
@@ -129,40 +88,36 @@ function isCrabFlooded(
   }
 }
 
-function isCrabOnSafeZone(
-  pos: { x: number; z: number },
-  zones: SafeZone[]
-): boolean {
-  return zones.some((z) => Math.hypot(z.x - pos.x, z.z - pos.z) <= z.radius);
+function isCrabOnSafeZone(pos: { x: number; z: number }): boolean {
+  return safeZoneEntities.entities.some(
+    (e) => Math.hypot(e.position.x - pos.x, e.position.z - pos.z) <= e.safeZone.radius
+  );
 }
 
 // --- Store ---
 function loadHighScore(): number {
   try {
-    return parseInt(localStorage.getItem('crabGameHighScore') || '0', 10) || 0;
+    return (
+      parseInt(localStorage.getItem('crabGameHighScore') || '0', 10) || 0
+    );
   } catch {
     return 0;
   }
 }
 
-function initWaveState() {
+function initWaveState(wave: number) {
+  spawnWaveEntities(wave);
   return {
-    crabPosition: { x: 0, z: 0 },
-    crabFacing: 1 as const,
     score: 0,
-    wave: 1,
-    timeUntilWave: getCountdown(1),
+    wave,
+    timeUntilWave: getCountdown(wave),
     tideProgress: 0,
     tideDirection: randomDirection(),
-    safeZones: generateRocks(1),
-    shells: generateShells(1),
     screenShake: 0,
   };
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
-  crabPosition: { x: 0, z: 0 },
-  crabFacing: 1,
   gamePhase: 'title',
   demoSubPhase: 'playing',
   score: 0,
@@ -171,31 +126,23 @@ export const useGameStore = create<GameState>((set, get) => ({
   timeUntilWave: 10,
   tideProgress: 0,
   tideDirection: 'south',
-  safeZones: [],
-  shells: [],
   screenShake: 0,
 
   moveCrab: (dx, dz) => {
-    const pos = get().crabPosition;
-    const newX = Math.max(
-      -HALF_MAP + 1,
-      Math.min(HALF_MAP - 1, pos.x + dx)
-    );
-    const newZ = Math.max(
-      -HALF_MAP + 1,
-      Math.min(HALF_MAP - 1, pos.z + dz)
-    );
-    const facing = dx !== 0 ? (dx > 0 ? 1 : -1) : get().crabFacing;
-    set({
-      crabPosition: { x: newX, z: newZ },
-      crabFacing: facing as 1 | -1,
-    });
+    const player = playerEntities.entities[0];
+    if (!player) return;
+    const pos = player.position;
+    pos.x = Math.max(-HALF_MAP + 1, Math.min(HALF_MAP - 1, pos.x + dx));
+    pos.z = Math.max(-HALF_MAP + 1, Math.min(HALF_MAP - 1, pos.z + dz));
+    if (dx !== 0) {
+      player.facing = dx > 0 ? 1 : -1;
+    }
   },
 
   startGame: () => {
     set({
       gamePhase: 'playing',
-      ...initWaveState(),
+      ...initWaveState(1),
       highScore: loadHighScore(),
     });
   },
@@ -204,7 +151,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       gamePhase: 'demo',
       demoSubPhase: 'playing',
-      ...initWaveState(),
+      ...initWaveState(1),
     });
   },
 
@@ -221,25 +168,24 @@ export const useGameStore = create<GameState>((set, get) => ({
     // Determine effective sub-phase
     const effectivePhase = isDemo ? state.demoSubPhase : state.gamePhase;
 
-    if (effectivePhase === 'playing') {
-      // Shell collection
-      const pos = state.crabPosition;
-      let scoreGained = 0;
-      let shellsChanged = false;
-      const newShells = state.shells.map((s) => {
-        if (
-          !s.collected &&
-          Math.hypot(s.x - pos.x, s.z - pos.z) < SHELL_COLLECT_RADIUS
-        ) {
-          shellsChanged = true;
-          scoreGained += 10;
-          return { ...s, collected: true };
-        }
-        return s;
-      });
+    const player = playerEntities.entities[0];
+    if (!player) return;
+    const pos = player.position;
 
-      if (shellsChanged) {
-        updates.shells = newShells;
+    if (effectivePhase === 'playing') {
+      // Shell collection via ECS
+      let scoreGained = 0;
+      for (const entity of shellEntities.entities) {
+        if (
+          !entity.shell.collected &&
+          Math.hypot(entity.position.x - pos.x, entity.position.z - pos.z) <
+            SHELL_COLLECT_RADIUS
+        ) {
+          entity.shell.collected = true;
+          scoreGained += entity.shell.points;
+        }
+      }
+      if (scoreGained > 0) {
         updates.score = state.score + scoreGained;
       }
 
@@ -267,11 +213,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       );
 
       // Check if crab is in the flooded zone
-      const pos = state.crabPosition;
       if (isCrabFlooded(pos, newProgress, state.tideDirection)) {
-        if (!isCrabOnSafeZone(pos, state.safeZones)) {
+        if (!isCrabOnSafeZone(pos)) {
           if (isDemo) {
-            // Auto-restart the demo
             get().startDemo();
           } else {
             const newHighScore = Math.max(state.score, state.highScore);
@@ -294,8 +238,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (newProgress >= 1) {
         // Wave survived — next wave
         const nextWave = state.wave + 1;
-        const rocks = generateRocks(nextWave);
-        const shells = generateShells(nextWave);
+        spawnWaveEntities(nextWave);
         set({
           ...updates,
           ...(isDemo
@@ -305,8 +248,6 @@ export const useGameStore = create<GameState>((set, get) => ({
           tideProgress: 0,
           timeUntilWave: getCountdown(nextWave),
           tideDirection: randomDirection(),
-          safeZones: rocks,
-          shells: shells,
           screenShake: 0.5,
         });
       } else {
@@ -320,5 +261,3 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
 }));
-
-export { getFloodLine };

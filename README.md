@@ -32,7 +32,8 @@ npm run clips
 - **[react-three-fiber](https://github.com/pmndrs/react-three-fiber)** - React renderer for Three.js
 - **[@react-three/drei](https://github.com/pmndrs/drei)** - Helpers and abstractions for R3F (OrthographicCamera, KeyboardControls, useTexture)
 - **[Three.js](https://threejs.org/)** - 3D graphics engine
-- **[Zustand](https://github.com/pmndrs/zustand)** - State management
+- **[Zustand](https://github.com/pmndrs/zustand)** - Game-level state management (phase, score, wave)
+- **[Miniplex](https://github.com/hmans/miniplex)** - Entity Component System (ECS) for game entities (crab, shells, rocks)
 - **[Nx](https://nx.dev/)** (v22) - Monorepo build system
 - **[Vite](https://vite.dev/)** - Frontend bundler
 - **[Electron](https://www.electronjs.org/)** - Desktop app framework
@@ -45,20 +46,24 @@ apps/
   game/                   # React + R3F web game
     src/
       App.tsx             # Root: KeyboardControls, SPACE handler, auto-starts demo
+      ecs/
+        world.ts          # Miniplex ECS world, entity type, cached archetypes
+        react.ts          # React bindings for ECS (createReactAPI)
+        helpers.ts        # Entity spawning/clearing (shells, rocks, player)
       components/
-        GameCanvas.tsx    # R3F Canvas, lighting, scene composition
+        GameCanvas.tsx    # R3F Canvas, lighting, scene composition (ECS-driven)
         Camera.tsx        # Orthographic top-down camera, screen shake
         TileMap.tsx       # Sand-textured ground plane
         CrabCharacter.tsx # Crab sprite rendering + mounts controllers
         CharacterController.tsx   # Player keyboard input (WASD/arrows)
         DemoCrabController.tsx    # AI bot that plays during title screen demo
         HUD.tsx           # Title, playing, tide warning, and game over overlays
-        Rock.tsx          # Safe zone boulder meshes
-        Shell.tsx         # Collectible torus meshes with bob/spin animation
+        Rock.tsx          # Safe zone boulder meshes (renders ECS entity)
+        Shell.tsx         # Collectible torus meshes with bob/spin (renders ECS entity)
         Tide.tsx          # Advancing water plane + foam edge
         WaveManager.tsx   # Headless: drives game tick each frame
       store/
-        gameStore.ts      # Zustand store: game state machine, tide/flood logic
+        gameStore.ts      # Zustand store: game phase, score, tide. Entity data in ECS.
     public/textures/      # Sand and crab sprite textures
   game-electron/          # Electron desktop wrapper
     src/
@@ -68,6 +73,17 @@ scripts/
   take-screenshots.ts     # Playwright screenshot generator
   take-clips.ts           # Playwright video clip recorder
 ```
+
+### ECS Architecture
+
+The game uses [Miniplex](https://github.com/hmans/miniplex) as an Entity Component System (ECS) to manage game entities. This separates **what exists** (ECS world) from **game rules** (Zustand store):
+
+- **ECS World** (`ecs/world.ts`): Holds all entities (player crab, shells, rocks) as plain objects with optional component properties (`position`, `facing`, `shell`, `safeZone`, etc.)
+- **Archetypes**: Cached queries like `playerEntities`, `shellEntities`, `safeZoneEntities` for efficient iteration
+- **Zustand Store** (`store/gameStore.ts`): Manages game-level state (phase, wave number, score, tide progress, screen shake) and contains the `tick()` game loop that queries and mutates ECS entities
+- **Entity Helpers** (`ecs/helpers.ts`): Functions to spawn/clear entities on wave transitions
+
+This pattern keeps entity data flat and cache-friendly while letting React components subscribe to archetype changes via `useEntities()` for rendering.
 
 ## Getting Started
 
