@@ -8,6 +8,9 @@ export function CharacterController() {
   const [, getKeys] = useKeyboardControls();
 
   useFrame((_, delta) => {
+    const phase = useGameStore.getState().gamePhase;
+    if (phase !== 'playing' && phase !== 'tideActive') return;
+
     const { forward, backward, left, right } = getKeys() as {
       forward: boolean;
       backward: boolean;
