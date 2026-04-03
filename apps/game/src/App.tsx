@@ -25,6 +25,9 @@ export function App() {
           useGameStore.getState().startGame();
         }
       }
+      if (e.code === 'KeyN') {
+        useGameStore.getState().toggleDayNight();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);

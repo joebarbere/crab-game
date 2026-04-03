@@ -38,10 +38,12 @@ interface GameState {
   tideProgress: number;
   tideDirection: TideDirection;
   screenShake: number;
+  isNight: boolean;
 
   moveCrab: (dx: number, dz: number) => void;
   startGame: () => void;
   startDemo: () => void;
+  toggleDayNight: () => void;
   tick: (delta: number) => void;
 }
 
@@ -133,6 +135,11 @@ export const useGameStore = create<GameState>((set, get) => ({
   tideProgress: 0,
   tideDirection: 'south',
   screenShake: 0,
+  isNight: false,
+
+  toggleDayNight: () => {
+    set((state) => ({ isNight: !state.isNight }));
+  },
 
   moveCrab: (dx, dz) => {
     const player = playerEntities.entities[0];

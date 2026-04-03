@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { playerEntities, safeZoneEntities } from '../ecs/world';
 import { CharacterController } from './CharacterController';
 import { DemoCrabController } from './DemoCrabController';
+import { GamepadController } from './GamepadController';
 import { toonGradientMap } from '../utils/toonGradient';
 import type { Group } from 'three';
 
@@ -73,6 +74,7 @@ export function CrabCharacter() {
     <>
       <CharacterController />
       <DemoCrabController />
+      <GamepadController />
       <group ref={groupRef}>
         {/* Body - flattened ellipsoid */}
         <mesh scale={[0.55, 0.28, 0.45]}>

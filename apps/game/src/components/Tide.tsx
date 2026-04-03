@@ -2,6 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGameStore, MAP_SIZE, getFloodLine } from '../store/gameStore';
 import { TideFoamParticles } from './TideFoamParticles';
+import { BioluminescentParticles } from './BioluminescentParticles';
 import * as THREE from 'three';
 
 const HALF_MAP = MAP_SIZE / 2;
@@ -93,6 +94,11 @@ export function Tide() {
   const waterRef = useRef<THREE.Mesh>(null!);
   const foamRef = useRef<THREE.Mesh>(null!);
 
+  const dayDeep = useMemo(() => new THREE.Color('#1565C0'), []);
+  const dayShallow = useMemo(() => new THREE.Color('#4FC3F7'), []);
+  const nightDeep = useMemo(() => new THREE.Color('#0A1628'), []);
+  const nightShallow = useMemo(() => new THREE.Color('#1A3A5C'), []);
+
   const waterUniforms = useMemo(
     () => ({
       uTime: { value: 0 },
@@ -111,8 +117,8 @@ export function Tide() {
     []
   );
 
-  useFrame((state) => {
-    const { gamePhase, demoSubPhase, tideProgress, tideDirection } =
+  useFrame((state, delta) => {
+    const { gamePhase, demoSubPhase, tideProgress, tideDirection, isNight } =
       useGameStore.getState();
 
     const showTide =
@@ -122,6 +128,12 @@ export function Tide() {
 
     waterRef.current.visible = showTide;
     foamRef.current.visible = showTide;
+
+    // Lerp water colors for day/night
+    const t = Math.min(delta * 3, 1);
+    waterUniforms.uDeepColor.value.lerp(isNight ? nightDeep : dayDeep, t);
+    waterUniforms.uShallowColor.value.lerp(isNight ? nightShallow : dayShallow, t);
+    waterUniforms.uOpacity.value += ((isNight ? 0.8 : 0.65) - waterUniforms.uOpacity.value) * t;
 
     if (!showTide) return;
 
@@ -188,6 +200,7 @@ export function Tide() {
         />
       </mesh>
       <TideFoamParticles />
+      <BioluminescentParticles />
     </>
   );
 }
