@@ -1,0 +1,118 @@
+# CLAUDE.md
+
+Guidelines and context for working on the crab-game monorepo.
+
+## Project Overview
+
+Nx 22 monorepo with two apps: a React + react-three-fiber top-down crab game (`game`) and an Electron desktop wrapper (`game-electron`). TypeScript throughout.
+
+## Commands
+
+```bash
+npm run dev              # Start web game dev server (port 4200)
+npm run dev:electron     # Start Electron app (launches dev server + Electron)
+npm run build            # Build web game to dist/apps/game/
+npm run build:electron   # Build Electron app to dist/apps/game-electron/
+npm run screenshots      # Generate screenshots with Playwright (needs xvfb on headless)
+npx nx build game        # Same as npm run build
+npx nx serve game        # Same as npm run dev
+```
+
+## Architecture
+
+```
+apps/
+  game/                        # React + R3F + Vite app (port 4200)
+    src/App.tsx                # Root: wraps scene in KeyboardControls (WASD/arrows)
+    src/components/
+      GameCanvas.tsx           # R3F <Canvas>, ambient light, scene composition
+      Camera.tsx               # OrthographicCamera, top-down, follows crab via useFrame
+      TileMap.tsx              # Single plane with repeating sand texture
+      CrabCharacter.tsx        # Crab sprite, reads position from zustand store
+      CharacterController.tsx  # Headless: reads keyboard input, updates store each frame
+    src/store/gameStore.ts     # Zustand store: crabPosition {x, z}, moveCrab(dx, dz)
+    public/textures/           # sand.png, crab.png (placeholder PNGs)
+  game-electron/               # Electron wrapper
+    src/main.ts                # BrowserWindow, loads localhost:4200 in dev, static in prod
+    src/preload.ts             # Minimal contextBridge
+scripts/
+  take-screenshots.ts          # Playwright: starts dev server, screenshots web + electron
+```
+
+### App dependency graph
+
+`game-electron` depends on `game` via `implicitDependencies` in project.json. The Electron serve target runs `nx serve game` and `wait-on http://localhost:4200` before launching Electron.
+
+## Critical Version Constraints
+
+**Do NOT upgrade React to v19.** R3F v8 requires `react >=18 <19`. If upgrading React, you must also upgrade `@react-three/fiber` to a version that supports React 19.
+
+All `@nx/*` packages must be pinned to the same version (currently 22.6.4). Mismatched Nx plugin versions cause runtime errors.
+
+| Package | Version | Constraint |
+|---------|---------|-----------|
+| react / react-dom | ^18.3.1 | Required by @react-three/fiber v8 |
+| @react-three/fiber | ^8.18.0 | Requires react ^18, three >=0.133 |
+| @react-three/drei | ^9.122.0 | Pairs with r3f v8 |
+| three | ^0.160.0 | Stable, works with r3f 8 + drei 9 |
+| zustand | ^5.0.12 | Framework-agnostic, works with React 18 |
+| nx / @nx/* | 22.6.4 | All Nx packages must match |
+| electron | ^35.0.0 | devDependency only |
+
+## Key Patterns
+
+### R3F performance pattern
+Use `useGameStore.getState()` inside `useFrame` callbacks instead of React hooks. This avoids re-rendering React components 60 times per second. Both `Camera.tsx` and `CrabCharacter.tsx` follow this pattern.
+
+### KeyboardControls placement
+`<KeyboardControls>` from drei is a DOM-level provider and must wrap `<Canvas>` (it lives in `App.tsx`). Inside the Canvas, components read input via `useKeyboardControls()`.
+
+### CharacterController
+Renders `null` (headless component). Uses delta-based movement with diagonal normalization for frame-rate independence. This is the only component that writes to the zustand store during gameplay.
+
+### Tile map
+Uses a single large plane with `RepeatWrapping` texture — NOT individual tile meshes. Much better performance (1 draw call vs hundreds).
+
+## Config Gotchas
+
+### Electron uses CommonJS
+`apps/game-electron/tsconfig.json` overrides the base config with `module: "commonjs"` and `moduleResolution: "node"`. This is required because Electron's main process runs in Node.js. Do not change to ESM.
+
+### Electron tsconfig needs rootDir
+`rootDir: "src"` is set explicitly in the electron tsconfig. Without it, tsc creates a nested `apps/game-electron/src/` directory inside the output, and Electron can't find `main.js`.
+
+### Vite fs.allow
+`apps/game/vite.config.ts` has `server.fs.allow: ['../..']` to allow Vite to serve files from the repo root. Without this, Vite blocks access to `index.html` when the dev server is started from the repo root (e.g., via `nx serve`).
+
+### Electron dev vs prod
+`main.ts` checks `process.argv.includes('--dev') || !app.isPackaged` to decide whether to load `http://localhost:4200` or built static files. DevTools open automatically in dev mode.
+
+### Electron window size
+Set to 1280x720 in `main.ts`. The screenshot script uses the same viewport dimensions. If you change one, update the other.
+
+## Screenshot Script
+
+`scripts/take-screenshots.ts` uses Playwright to capture screenshots of both apps.
+
+- Compiles to `dist/scripts/` via its own `scripts/tsconfig.json`
+- Starts the Vite dev server, waits for it with `waitForServer()`
+- Web screenshot: launches Chromium, navigates to localhost:4200
+- Electron screenshot: compiles electron TS, launches via `playwright._electron`
+- Both wait 3 seconds after page load for R3F/Three.js to render
+- Outputs to `docs/screenshots/`
+
+**Running on headless systems:** needs `xvfb-run -a` and `DISPLAY=:99`. The Chromium executable path defaults to `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` — override with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` env var. Electron launches with `--no-sandbox --disable-gpu` for headless compatibility.
+
+## Build Outputs
+
+- `dist/apps/game/` — Vite production build (static HTML/JS/CSS)
+- `dist/apps/game-electron/` — Compiled Electron main process (main.js, preload.js)
+- `dist/scripts/` — Compiled screenshot script
+- `.nx/` — Nx computation cache (do not delete unless troubleshooting)
+
+## Testing
+
+No test framework is configured yet. When adding tests:
+- The Nx preset supports Vitest — add `@nx/vitest` plugin
+- R3F components need a mock WebGL context (e.g., `@react-three/test-renderer`)
+- Electron main process tests should use Node.js test runner or Vitest with `environment: 'node'`
